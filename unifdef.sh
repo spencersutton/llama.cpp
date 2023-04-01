@@ -1,0 +1,34 @@
+defines=(
+  -D__APPLE__
+  -D__ARM_FEATURE_DOTPROD
+  -D__ARM_FEATURE_FMA
+  -D__ARM_FEATURE_FP16_VECTOR_ARITHMETIC
+  -D__ARM_FEATURE_QRDMX
+  -D__ARM_NEON
+  -DGGML_FP16_TO_FP32
+  -DGGML_FP32_TO_FP16
+  -DGGML_GELU_FP16
+  -DGGML_MLOCK_SUPPORT
+  -DGGML_SILU_FP16
+  -DGGML_SIMD
+  -DGGML_USE_ACCELERATE
+  -DNDEBUG
+  -U __AVX512F
+  -U__AVX__
+  -U__AVX2__
+  -U__AVX512F__
+  -U__F16C__
+  -U__FMA__
+  -U__FreeBSD__
+  -U__HAIKU__
+  -U__MINGW32__
+  -U__NetBSD__
+  -U__OpenBSD__
+  -U__POWER9_VECTOR__
+  -U__SSE3__
+  -U__wasm_simd128__
+  -U_MSC_VER
+  -UGGML_PERF
+  -UGGML_SOFT_MAX_ACCELERATE
+)
+unifdef -k -o ggml.c "${defines[@]}" ggml.c
