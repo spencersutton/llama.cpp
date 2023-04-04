@@ -12,6 +12,7 @@ defines=(
   -DGGML_SILU_FP16
   -DGGML_SIMD
   -DGGML_USE_ACCELERATE
+  -DLLAMA_USE_SCRATCH
   -DNDEBUG
   -U __AVX512F
   -U__AVX__
@@ -28,7 +29,23 @@ defines=(
   -U__SSE3__
   -U__wasm_simd128__
   -U_MSC_VER
+  -U_WIN32
+  -UGGML_DEBUG
   -UGGML_PERF
   -UGGML_SOFT_MAX_ACCELERATE
+  -UGGML_USE_OPENBLAS
 )
-unifdef -k -o ggml.c "${defines[@]}" ggml.c
+
+if [ "$1" == "-u" ]; then
+  defines=("${defines[@]/-D/-U}")
+fi
+
+files=("ggml.c" "llama.cpp" "llama.h" "ggml.h")
+
+for item in "${files[@]}"; do
+  echo "Processing $item"
+  git checkout master -- $item
+  unifdef -k -o $item "${defines[@]}" $item
+  clang-format -i $item
+  git add $item
+done
