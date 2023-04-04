@@ -42,25 +42,17 @@ static void ggml_compute_forward_mul_mat_q_f32(
   const int64_t ne02 = src0->ne[2];
   const int64_t ne03 = src0->ne[3];
 
-  const int64_t ne10 = src1->ne[0];
   const int64_t ne11 = src1->ne[1];
   const int64_t ne12 = src1->ne[2];
   const int64_t ne13 = src1->ne[3];
 
   const int64_t ne0 = dst->ne[0];
-  const int64_t ne1 = dst->ne[1];
   const int64_t ne2 = dst->ne[2];
   const int64_t ne3 = dst->ne[3];
 
-  const int nb00 = src0->nb[0];
   const int nb01 = src0->nb[1];
   const int nb02 = src0->nb[2];
   const int nb03 = src0->nb[3];
-
-  const int nb10 = src1->nb[0];
-  const int nb11 = src1->nb[1];
-  const int nb12 = src1->nb[2];
-  const int nb13 = src1->nb[3];
 
   const int nb0 = dst->nb[0];
   const int nb1 = dst->nb[1];
@@ -99,20 +91,13 @@ static void ggml_compute_forward_mul_mat_q_f32(
     const int i02 = (ir - i03 * ne02 * ne01) / ne01;
     const int i01 = (ir - i03 * ne02 * ne01 - i02 * ne01);
 
-    const int i13 = i03;
-    const int i12 = i02;
-
-    const int i0 = i01;
-    const int i2 = i02;
-    const int i3 = i03;
-
     void *src0_row =
         (void *)((char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
     char *src1_col =
-        ((char *)wdata + ((0 + i12 * ne11 + i13 * ne12 * ne11) * row_size));
+        ((char *)wdata + ((0 + i02 * ne11 + i03 * ne12 * ne11) * row_size));
 
     float *dst_col = (float *)((char *)dst->data +
-                               (i0 * nb0 + 0 * nb1 + i2 * nb2 + i3 * nb3));
+                               (i01 * nb0 + 0 * nb1 + i02 * nb2 + i03 * nb3));
 
     assert(ne00 % 32 == 0);
 
