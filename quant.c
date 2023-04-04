@@ -199,7 +199,46 @@ static void impl(const struct ggml_compute_params *params,
     assert(ne00 % 32 == 0);
 
     for (int64_t ic = 0; ic < ne11; ++ic) {
-      vec_dot_q(ne00, &dst_col[ic * ne0], src0_row,
-                (void *)(src1_col + ic * row_size));
+      const int n = ne00;
+      float *restrict s = &dst_col[ic * ne0];
+      const void *restrict vx = src0_row;
+      const void *restrict vy = (void *)(src1_col + ic * row_size);
+
+      const int nb = n / QK;
+
+      assert(n % QK == 0);
+      assert(nb % 2 == 0);
+
+      const block_q4_0 *restrict x = vx;
+      const block_q4_0 *restrict y = vy;
+
+      float sumf = 0.0;
+
+      // scalar
+      for (int i = 0; i < nb; i++) {
+        const float d0 = x[i].d;
+        const float d1 = y[i].d;
+
+        const uint8_t *restrict p0 = x[i].qs;
+        const uint8_t *restrict p1 = y[i].qs;
+
+        int sumi = 0;
+        for (int j = 0; j < QK / 2; j++) {
+          const uint8_t v0 = p0[j];
+          const uint8_t v1 = p1[j];
+
+          const int8_t i0 = (int8_t)(v0 & 0xf) - 8;
+          const int8_t i1 = (int8_t)(v0 >> 4) - 8;
+
+          const int8_t i2 = (int8_t)(v1 & 0xf) - 8;
+          const int8_t i3 = (int8_t)(v1 >> 4) - 8;
+
+          sumi += i0 * i2 + i1 * i3;
+        }
+        sumf += d0 * d1 * sumi;
+      }
+
+      *s = sumf;
     }
   }
+}
