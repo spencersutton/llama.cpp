@@ -35,82 +35,8 @@ struct ggml_compute_params {
 };
 
 static void ggml_compute_forward_mul_mat_q_f32(
-    const struct ggml_compute_params *params, const struct ggml_tensor *a,
-    const struct ggml_tensor *b, struct ggml_tensor *dst) {
-
-  const int nth = params->nth;
-  const enum ggml_type type = a->type;
-  if (type != GGML_TYPE_Q4_0) {
-    abort();
-  }
-
-  // parallelize by x rows using ggml_vec_dot_q
-
-  // total rows in a
-  const int num_rows = a->ne[1] * a->ne[2] * a->ne[2];
-
-  // rows per thread
-  const int dr = (num_rows + nth - 1) / nth;
-
-  // row range for this thread
-  const int min_row = dr * params->ith;
-  const int max_row = MIN(min_row + dr, num_rows);
-
-  void *wdata = params->wdata;
-  const size_t row_size = a->ne[0] * sizeof(block_q4_0) / QK;
-
-  for (int row_index = min_row; row_index < max_row; ++row_index) {
-    // a indices
-    const int index3 = row_index / (a->ne[2] * a->ne[1]);
-    const int index2 = (row_index - index3 * a->ne[2] * a->ne[1]) / a->ne[1];
-    const int index1 =
-        (row_index - index3 * a->ne[2] * a->ne[1] - index2 * a->ne[1]);
-
-    void *x_row =
-        (void *)((char *)a->data +
-                 (index1 * a->nb[1] + index2 * a->nb[2] + index3 * a->nb[3]));
-    char *y_col =
-        ((char *)wdata +
-         ((0 + index2 * b->ne[1] + index3 * b->ne[2] * b->ne[1]) * row_size));
-
-    float *dest_column = (float *)((char *)dst->data +
-                                   (index1 * dst->nb[0] + 0 * dst->nb[1] +
-                                    index2 * dst->nb[2] + index3 * dst->nb[3]));
-
-    for (int64_t ic = 0; ic < b->ne[1]; ++ic) {
-      const int nb = a->ne[0] / QK;
-
-      const block_q4_0 *restrict block_x = x_row;
-      const block_q4_0 *restrict block_y = (void *)(y_col + ic * row_size);
-
-      float sumf = 0.0;
-
-      // scalar
-      for (int i = 0; i < nb; i++) {
-        int sumi = 0;
-        for (int j = 0; j < QK / 2; j++) {
-          const uint8_t v0 = block_x[i].qs[j];
-          const uint8_t v1 = block_y[i].qs[j];
-
-          const int8_t i0 = (int8_t)(v0 & 0xf) - 8;
-          const int8_t i1 = (int8_t)(v0 >> 4) - 8;
-
-          const int8_t i2 = (int8_t)(v1 & 0xf) - 8;
-          const int8_t i3 = (int8_t)(v1 >> 4) - 8;
-
-          sumi += i0 * i2 + i1 * i3;
-        }
-        sumf += block_x[i].d * block_y[i].d * sumi;
-      }
-
-      dest_column[ic * dst->ne[0]] = sumf;
-    }
-  }
-}
-
-static void impl(const struct ggml_compute_params *params,
-                 const struct ggml_tensor *src0, const struct ggml_tensor *src1,
-                 struct ggml_tensor *dst) {
+    const struct ggml_compute_params *params, const struct ggml_tensor *src0,
+    const struct ggml_tensor *src1, struct ggml_tensor *dst) {
   const int64_t ne00 = src0->ne[0];
   const int64_t ne01 = src0->ne[1];
   const int64_t ne02 = src0->ne[2];
