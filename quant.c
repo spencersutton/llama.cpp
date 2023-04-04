@@ -9,16 +9,6 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define QK 32
 
-#define ne0(tensor) tensor->ne[0]
-#define ne1(tensor) tensor->ne[1]
-#define ne2(tensor) tensor->ne[2]
-#define ne3(tensor) tensor->ne[3]
-
-#define nb0(tensor) tensor->nb[0]
-#define nb1(tensor) tensor->nb[1]
-#define nb2(tensor) tensor->nb[2]
-#define nb3(tensor) tensor->nb[3]
-
 typedef struct {
   float d;            // delta
   uint8_t qs[QK / 2]; // nibbles / quants
@@ -33,7 +23,7 @@ enum ggml_task_type {
 struct ggml_compute_params {
   enum ggml_task_type type;
 
-  int thread_index, num_threads;
+  int ith, nth;
 
   // work buffer for all threads
   size_t wsize;
@@ -44,7 +34,7 @@ static void ggml_compute_forward_mul_mat_q_f32(
     const struct ggml_compute_params *params, const struct ggml_tensor *a,
     const struct ggml_tensor *b, struct ggml_tensor *dst) {
 
-  const int num_threads = params->num_threads;
+  const int nth = params->nth;
   const enum ggml_type type = a->type;
   if (type != GGML_TYPE_Q4_0) {
     abort();
@@ -53,37 +43,38 @@ static void ggml_compute_forward_mul_mat_q_f32(
   // parallelize by x rows using ggml_vec_dot_q
 
   // total rows in a
-  const int num_rows = ne1(a) * ne2(a) * ne2(a);
+  const int num_rows = a->ne[1] * a->ne[2] * a->ne[2];
 
   // rows per thread
-  const int dr = (num_rows + num_threads - 1) / num_threads;
+  const int dr = (num_rows + nth - 1) / nth;
 
   // row range for this thread
-  const int min_row = dr * params->thread_index;
+  const int min_row = dr * params->ith;
   const int max_row = MIN(min_row + dr, num_rows);
 
   void *wdata = params->wdata;
-  const size_t row_size = ne0(a) * sizeof(block_q4_0) / QK;
+  const size_t row_size = a->ne[0] * sizeof(block_q4_0) / QK;
 
   for (int row_index = min_row; row_index < max_row; ++row_index) {
     // a indices
-    const int index3 = row_index / (ne2(a) * ne1(a));
-    const int index2 = (row_index - index3 * ne2(a) * ne1(a)) / ne1(a);
-    const int index1 = (row_index - index3 * ne2(a) * ne1(a) - index2 * ne1(a));
+    const int index3 = row_index / (a->ne[2] * a->ne[1]);
+    const int index2 = (row_index - index3 * a->ne[2] * a->ne[1]) / a->ne[1];
+    const int index1 =
+        (row_index - index3 * a->ne[2] * a->ne[1] - index2 * a->ne[1]);
 
     void *x_row =
         (void *)((char *)a->data +
-                 (index1 * nb1(a) + index2 * nb2(a) + index3 * nb3(a)));
+                 (index1 * a->nb[1] + index2 * a->nb[2] + index3 * a->nb[3]));
     char *y_col =
         ((char *)wdata +
-         ((0 + index2 * ne1(b) + index3 * ne2(b) * ne1(b)) * row_size));
+         ((0 + index2 * b->ne[1] + index3 * b->ne[2] * b->ne[1]) * row_size));
 
-    float *dest_column =
-        (float *)((char *)dst->data + (index1 * nb0(dst) + 0 * nb1(dst) +
-                                       index2 * nb2(dst) + index3 * nb3(dst)));
+    float *dest_column = (float *)((char *)dst->data +
+                                   (index1 * dst->nb[0] + 0 * dst->nb[1] +
+                                    index2 * dst->nb[2] + index3 * dst->nb[3]));
 
-    for (int64_t ic = 0; ic < ne1(b); ++ic) {
-      const int nb = ne0(a) / QK;
+    for (int64_t ic = 0; ic < b->ne[1]; ++ic) {
+      const int nb = a->ne[0] / QK;
 
       const block_q4_0 *restrict block_x = x_row;
       const block_q4_0 *restrict block_y = (void *)(y_col + ic * row_size);
@@ -108,52 +99,94 @@ static void ggml_compute_forward_mul_mat_q_f32(
         sumf += block_x[i].d * block_y[i].d * sumi;
       }
 
-      dest_column[ic * ne0(dst)] = sumf;
+      dest_column[ic * dst->ne[0]] = sumf;
     }
   }
 }
 
-static void impl() {
-  // a indices
-  const int index3 = row_index / (ne2(a) * ne1(a));
-  const int index2 = (row_index - index3 * ne2(a) * ne1(a)) / ne1(a);
-  const int index1 = (row_index - index3 * ne2(a) * ne1(a) - index2 * ne1(a));
+static void impl(const struct ggml_compute_params *params,
+                 const struct ggml_tensor *src0, const struct ggml_tensor *src1,
+                 struct ggml_tensor *dst) {
+  const int64_t ne00 = src0->ne[0];
+  const int64_t ne01 = src0->ne[1];
+  const int64_t ne02 = src0->ne[2];
+  const int64_t ne03 = src0->ne[3];
 
-  void *x_row = (void *)((char *)a->data +
-                         (index1 * nb1(a) + index2 * nb2(a) + index3 * nb3(a)));
-  char *y_col = ((char *)wdata +
-                 ((0 + index2 * ne1(b) + index3 * ne2(b) * ne1(b)) * row_size));
+  const int64_t ne10 = src1->ne[0];
+  const int64_t ne11 = src1->ne[1];
+  const int64_t ne12 = src1->ne[2];
+  const int64_t ne13 = src1->ne[3];
 
-  float *dest_column =
-      (float *)((char *)dst->data + (index1 * nb0(dst) + 0 * nb1(dst) +
-                                     index2 * nb2(dst) + index3 * nb3(dst)));
+  const int64_t ne0 = dst->ne[0];
+  const int64_t ne1 = dst->ne[1];
+  const int64_t ne2 = dst->ne[2];
+  const int64_t ne3 = dst->ne[3];
 
-  for (int64_t ic = 0; ic < ne1(b); ++ic) {
-    const int nb = ne0(a) / QK;
+  const int nb00 = src0->nb[0];
+  const int nb01 = src0->nb[1];
+  const int nb02 = src0->nb[2];
+  const int nb03 = src0->nb[3];
 
-    const block_q4_0 *restrict block_x = x_row;
-    const block_q4_0 *restrict block_y = (void *)(y_col + ic * row_size);
+  const int nb10 = src1->nb[0];
+  const int nb11 = src1->nb[1];
+  const int nb12 = src1->nb[2];
+  const int nb13 = src1->nb[3];
 
-    float sumf = 0.0;
+  const int nb0 = dst->nb[0];
+  const int nb1 = dst->nb[1];
+  const int nb2 = dst->nb[2];
+  const int nb3 = dst->nb[3];
 
-    // scalar
-    for (int i = 0; i < nb; i++) {
-      int sumi = 0;
-      for (int j = 0; j < QK / 2; j++) {
-        const uint8_t v0 = block_x[i].qs[j];
-        const uint8_t v1 = block_y[i].qs[j];
+  const int ith = params->ith;
+  const int nth = params->nth;
 
-        const int8_t i0 = (int8_t)(v0 & 0xf) - 8;
-        const int8_t i1 = (int8_t)(v0 >> 4) - 8;
+  GGML_ASSERT(ne02 == ne12);
+  GGML_ASSERT(ne03 == ne13);
+  GGML_ASSERT(ne2 == ne12);
+  GGML_ASSERT(ne3 == ne13);
 
-        const int8_t i2 = (int8_t)(v1 & 0xf) - 8;
-        const int8_t i3 = (int8_t)(v1 >> 4) - 8;
+  const enum ggml_type type = src0->type;
+  quantize_row_q_t const quantize_row_q = quantize_fns[type].quantize_row_q;
+  vec_dot_q_t const vec_dot_q = quantize_fns[type].vec_dot_q;
 
-        sumi += i0 * i2 + i1 * i3;
-      }
-      sumf += block_x[i].d * block_y[i].d * sumi;
+  // total rows in src0
+  const int nr = ne01 * ne02 * ne03;
+
+  // rows per thread
+  const int dr = (nr + nth - 1) / nth;
+
+  // row range for this thread
+  const int ir0 = dr * ith;
+  const int ir1 = MIN(ir0 + dr, nr);
+
+  void *wdata = params->wdata;
+  const size_t row_size = ne00 * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
+
+  for (int ir = ir0; ir < ir1; ++ir) {
+    // src0 indices
+    const int i03 = ir / (ne02 * ne01);
+    const int i02 = (ir - i03 * ne02 * ne01) / ne01;
+    const int i01 = (ir - i03 * ne02 * ne01 - i02 * ne01);
+
+    const int i13 = i03;
+    const int i12 = i02;
+
+    const int i0 = i01;
+    const int i2 = i02;
+    const int i3 = i03;
+
+    void *src0_row =
+        (void *)((char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
+    char *src1_col =
+        ((char *)wdata + ((0 + i12 * ne11 + i13 * ne12 * ne11) * row_size));
+
+    float *dst_col = (float *)((char *)dst->data +
+                               (i0 * nb0 + 0 * nb1 + i2 * nb2 + i3 * nb3));
+
+    assert(ne00 % 32 == 0);
+
+    for (int64_t ic = 0; ic < ne11; ++ic) {
+      vec_dot_q(ne00, &dst_col[ic * ne0], src0_row,
+                (void *)(src1_col + ic * row_size));
     }
-
-    dest_column[ic * ne0(dst)] = sumf;
   }
-}
