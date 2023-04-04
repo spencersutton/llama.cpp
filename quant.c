@@ -8,20 +8,12 @@
 
 #define QK 32
 
-static const int GGML_BLCK_SIZE[GGML_TYPE_COUNT] = {
-    QK,
-};
-
 static_assert(GGML_TYPE_COUNT == 7, "GGML_TYPE_COUNT != 5");
 
 typedef struct {
   float d;            // delta
   uint8_t qs[QK / 2]; // nibbles / quants
 } block_q4_0;
-
-static const size_t GGML_TYPE_SIZE[GGML_TYPE_COUNT] = {
-    sizeof(block_q4_0),
-};
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
