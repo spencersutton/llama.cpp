@@ -1,4 +1,3 @@
-#include "ggml.h"
 #include <assert.h>
 #include <float.h>
 #include <math.h>
@@ -8,7 +7,20 @@
 
 #define QK 32
 
-static_assert(GGML_TYPE_COUNT == 7, "GGML_TYPE_COUNT != 5");
+// n-dimensional tensor
+struct ggml_tensor {
+  int n_dims;
+  int64_t num_elements[4]; // number of elements
+  size_t num_bytes[4];  // stride in bytes:
+                 // nb[0] = sizeof(type)
+                 // nb[1] = nb[0]   * ne[0] + padding
+                 // nb[i] = nb[i-1] * ne[i-1]
+
+  struct ggml_tensor *x;
+  struct ggml_tensor *y;
+
+  void *data;
+};
 
 typedef struct {
   float d;            // delta
@@ -16,48 +28,39 @@ typedef struct {
 } block_q4_0;
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
-enum ggml_task_type {
-  GGML_TASK_INIT = 0,
-  GGML_TASK_COMPUTE,
-  GGML_TASK_FINALIZE,
-};
 
 struct ggml_compute_params {
-  enum ggml_task_type type;
-
-  int ith, nth;
+  int ith;
+  int nth;
 
   // work buffer for all threads
-  size_t wsize;
   void *wdata;
 };
 
 static void ggml_compute_forward_mul_mat_q_f32(
     const struct ggml_compute_params *params, const struct ggml_tensor *src0,
     const struct ggml_tensor *src1, struct ggml_tensor *dst) {
-  const int64_t ne00 = src0->ne[0];
-  const int64_t ne01 = src0->ne[1];
-  const int64_t ne02 = src0->ne[2];
-  const int64_t ne03 = src0->ne[3];
+  const int64_t ne00 = src0->num_elements[0];
+  const int64_t ne01 = src0->num_elements[1];
+  const int64_t ne02 = src0->num_elements[2];
+  const int64_t ne03 = src0->num_elements[3];
 
-  const int64_t ne11 = src1->ne[1];
-  const int64_t ne12 = src1->ne[2];
-  const int64_t ne13 = src1->ne[3];
+  const int64_t ne11 = src1->num_elements[1];
+  const int64_t ne12 = src1->num_elements[2];
+  const int64_t ne13 = src1->num_elements[3];
 
-  const int64_t ne0 = dst->ne[0];
-  const int64_t ne2 = dst->ne[2];
-  const int64_t ne3 = dst->ne[3];
+  const int64_t ne0 = dst->num_elements[0];
+  const int64_t ne2 = dst->num_elements[2];
+  const int64_t ne3 = dst->num_elements[3];
 
-  const int nb01 = src0->nb[1];
-  const int nb02 = src0->nb[2];
-  const int nb03 = src0->nb[3];
+  const int nb01 = src0->num_bytes[1];
+  const int nb02 = src0->num_bytes[2];
+  const int nb03 = src0->num_bytes[3];
 
-  const int nb0 = dst->nb[0];
-  const int nb1 = dst->nb[1];
-  const int nb2 = dst->nb[2];
-  const int nb3 = dst->nb[3];
+  const int nb0 = dst->num_bytes[0];
+  const int nb1 = dst->num_bytes[1];
+  const int nb2 = dst->num_bytes[2];
+  const int nb3 = dst->num_bytes[3];
 
   const int ith = params->ith;
   const int nth = params->nth;
@@ -66,11 +69,6 @@ static void ggml_compute_forward_mul_mat_q_f32(
   assert(ne03 == ne13);
   assert(ne2 == ne12);
   assert(ne3 == ne13);
-
-  const enum ggml_type type = src0->type;
-  if (type != GGML_TYPE_Q4_0) {
-    return;
-  }
 
   // total rows in src0
   const int nr = ne01 * ne02 * ne03;
