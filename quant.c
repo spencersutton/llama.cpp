@@ -1,18 +1,30 @@
 #include "ggml.h"
+#include <assert.h>
 #include <float.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define QK 32
+
+static const int GGML_BLCK_SIZE[GGML_TYPE_COUNT] = {
+    QK,
+};
+
+static_assert(GGML_TYPE_COUNT == 7, "GGML_TYPE_COUNT != 5");
 
 typedef struct {
   float d;            // delta
   uint8_t qs[QK / 2]; // nibbles / quants
 } block_q4_0;
+
+static const size_t GGML_TYPE_SIZE[GGML_TYPE_COUNT] = {
+    sizeof(block_q4_0),
+};
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 enum ggml_task_type {
   GGML_TASK_INIT = 0,
@@ -140,14 +152,15 @@ static void impl(const struct ggml_compute_params *params,
   const int ith = params->ith;
   const int nth = params->nth;
 
-  GGML_ASSERT(ne02 == ne12);
-  GGML_ASSERT(ne03 == ne13);
-  GGML_ASSERT(ne2 == ne12);
-  GGML_ASSERT(ne3 == ne13);
+  assert(ne02 == ne12);
+  assert(ne03 == ne13);
+  assert(ne2 == ne12);
+  assert(ne3 == ne13);
 
   const enum ggml_type type = src0->type;
-  quantize_row_q_t const quantize_row_q = quantize_fns[type].quantize_row_q;
-  vec_dot_q_t const vec_dot_q = quantize_fns[type].vec_dot_q;
+  if (type != GGML_TYPE_Q4_0) {
+    return;
+  }
 
   // total rows in src0
   const int nr = ne01 * ne02 * ne03;
@@ -160,7 +173,7 @@ static void impl(const struct ggml_compute_params *params,
   const int ir1 = MIN(ir0 + dr, nr);
 
   void *wdata = params->wdata;
-  const size_t row_size = ne00 * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
+  const size_t row_size = ne00 * sizeof(block_q4_0) / QK;
 
   for (int ir = ir0; ir < ir1; ++ir) {
     // src0 indices
