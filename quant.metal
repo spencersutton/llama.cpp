@@ -1,6 +1,14 @@
 #include <metal_atomic>
 #include <metal_stdlib>
 
+#ifndef __METAL__
+#define kernel
+#define device
+typedef long long4[4];
+#include <stdint.h>
+#include <stdlib.h>
+#endif
+
 using namespace metal;
 
 #define QK 32
