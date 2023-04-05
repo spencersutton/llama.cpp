@@ -47,11 +47,8 @@ static void ggml_compute_forward_mul_mat_q_f32(
 
   const int64_t ne11 = src1->num_elements[1];
   const int64_t ne12 = src1->num_elements[2];
-  const int64_t ne13 = src1->num_elements[3];
 
   const int64_t ne0 = dst->num_elements[0];
-  const int64_t ne2 = dst->num_elements[2];
-  const int64_t ne3 = dst->num_elements[3];
 
   const int nb01 = src0->num_bytes[1];
   const int nb02 = src0->num_bytes[2];
@@ -65,10 +62,6 @@ static void ggml_compute_forward_mul_mat_q_f32(
   const int ith = params->ith;
   const int nth = params->nth;
 
-  assert(ne02 == ne12);
-  assert(ne03 == ne13);
-  assert(ne2 == ne12);
-  assert(ne3 == ne13);
 
   // total rows in src0
   const int nr = ne01 * ne02 * ne03;
