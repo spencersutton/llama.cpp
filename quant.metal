@@ -1,4 +1,7 @@
+#include <metal_atomic>
+#include <metal_stdlib>
 
+using namespace metal;
 
 #define QK 32
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -31,7 +34,8 @@ struct ggml_compute_params {
 };
 
 kernel void ggml_compute_forward_mul_mat_q_f32(
-    const device struct ggml_compute_params  *params, const device struct ggml_tensor *src0,
+    const device struct ggml_compute_params *params,
+    const device struct ggml_tensor *src0,
     const device struct ggml_tensor *src1, device struct ggml_tensor *dst) {
   const int64_t ne00 = src0->num_elements[0];
   const int64_t ne01 = src0->num_elements[1];
@@ -74,22 +78,20 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
     const int i02 = (ir - i03 * ne02 * ne01) / ne01;
     const int i01 = (ir - i03 * ne02 * ne01 - i02 * ne01);
 
-    auto src0_row = ((device char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
-    auto src1_col = ((device char *)wdata + ((0 + i02 * ne11 + i03 * ne12 * ne11) * row_size));
+    auto src0_row =
+        (device char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03);
+    auto src1_col = (device char *)wdata +
+                    ((0 + i02 * ne11 + i03 * ne12 * ne11) * row_size);
 
-    size_t offset = i01 * nb0 + 0 * nb1 + i02 * nb2 + i03 * nb3;
-    auto dst_col = (device float *)((device char *)dst->data + offset);
+    auto dst_col =
+        (device float *)((device char *)dst->data +
+                         (i01 * nb0 + 0 * nb1 + i02 * nb2 + i03 * nb3));
 
     for (int64_t ic = 0; ic < ne11; ++ic) {
-      const int n = ne00;
-      auto s = &dst_col[ic * ne0];
-      auto vx = src0_row;
-      auto vy = src1_col + ic * row_size;
+      const int nb = ne00 / QK;
 
-      const int nb = n / QK;
-
-      auto x = (device const block_q4_0 *)vx;
-      auto y = (device const block_q4_0 *)vy;
+      auto x = (device const block_q4_0 *)src0_row;
+      auto y = (device const block_q4_0 *)(src1_col + ic * row_size);
 
       float sumf = 0.0;
 
@@ -117,7 +119,7 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
         sumf += d0 * d1 * sumi;
       }
 
-      *s = sumf;
+      dst_col[ic * ne0] = sumf;
     }
   }
 }
