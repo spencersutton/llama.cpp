@@ -92,7 +92,7 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
     auto src0_row =
         (device char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03);
     auto src1_col = (device char *)wdata +
-                    ((0 + i02 * ne11 + i03 * ne12 * ne11) * row_size);
+                     ((0 + i02 * ne11 + i03 * ne12 * ne11) * row_size);
 
     auto dst_col =
         (device float *)((device char *)dst->data +
@@ -110,14 +110,14 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
       for (int i = 0; i < nb; i++) {
         int sumi = 0;
         for (ulong j = 0; j < sizeof(x[i].qs); j++) {
-          const auto v0 = x[i].qs[j];
-          const auto v1 = y[i].qs[j];
+          const int v0 = x[i].qs[j];
+          const int v1 = y[i].qs[j];
 
-          const auto i0 = extract_bits(v0, 4, 4) - 8;
-          const auto i1 = extract_bits(v0, 0, 4) - 8;
+          const int i0 = extract_bits(v0, 4, 4) - 8;
+          const int i1 = extract_bits(v0, 0, 4) - 8;
 
-          const auto i2 = extract_bits(v1, 4, 4) - 8;
-          const auto i3 = extract_bits(v1, 0, 4) - 8;
+          const int i2 = extract_bits(v1, 4, 4) - 8;
+          const int i3 = extract_bits(v1, 0, 4) - 8;
 
           sumi += i0 * i2 + i1 * i3;
         }
