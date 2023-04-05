@@ -5,6 +5,9 @@
 #define kernel
 #define device
 typedef long long4[4];
+typedef unsigned long ulong;
+#define extract_bits(x, offset, count)                                         \
+  (((x) >> (offset)) & ((1 << (count)) - 1))
 #include <stdint.h>
 #include <stdlib.h>
 #endif
@@ -17,10 +20,10 @@ using namespace metal;
 struct ggml_tensor {
   int n_dims;
   int64_t ne[4]; // number of elements
-  size_t nb[4];     // stride in bytes:
-                           // nb[0] = sizeof(type)
-                           // nb[1] = nb[0]   * ne[0] + padding
-                           // nb[i] = nb[i-1] * ne[i-1]
+  size_t nb[4];  // stride in bytes:
+                 // nb[0] = sizeof(type)
+                 // nb[1] = nb[0]   * ne[0] + padding
+                 // nb[i] = nb[i-1] * ne[i-1]
 
   device struct ggml_tensor *x;
   device struct ggml_tensor *y;
@@ -29,8 +32,8 @@ struct ggml_tensor {
 };
 
 typedef struct {
-  float d;            // delta
-  uint8_t qs[QK / 2]; // nibbles / quants
+  float d;        // delta
+  uint8_t qs[16]; // nibbles / quants
 } block_q4_0;
 
 struct ggml_compute_params {
@@ -105,26 +108,20 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
 
       // scalar
       for (int i = 0; i < nb; i++) {
-        const float d0 = x[i].d;
-        const float d1 = y[i].d;
-
-        auto p0 = x[i].qs;
-        auto p1 = y[i].qs;
-
         int sumi = 0;
-        for (int j = 0; j < QK / 2; j++) {
-          const uint8_t v0 = p0[j];
-          const uint8_t v1 = p1[j];
+        for (ulong j = 0; j < sizeof(x[i].qs); j++) {
+          const auto v0 = x[i].qs[j];
+          const auto v1 = y[i].qs[j];
 
-          const int8_t i0 = (int8_t)(v0 & 0xf) - 8;
-          const int8_t i1 = (int8_t)(v0 >> 4) - 8;
+          const auto i0 = extract_bits(v0, 4, 4) - 8;
+          const auto i1 = extract_bits(v0, 0, 4) - 8;
 
-          const int8_t i2 = (int8_t)(v1 & 0xf) - 8;
-          const int8_t i3 = (int8_t)(v1 >> 4) - 8;
+          const auto i2 = extract_bits(v1, 4, 4) - 8;
+          const auto i3 = extract_bits(v1, 0, 4) - 8;
 
           sumi += i0 * i2 + i1 * i3;
         }
-        sumf += d0 * d1 * sumi;
+        sumf += x[i].d * y[i].d * sumi;
       }
 
       dst_col[ic * ne0] = sumf;
