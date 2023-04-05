@@ -1,14 +1,15 @@
 
+
 #define QK 32
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 struct ggml_tensor {
   int n_dims;
   int64_t num_elements[4]; // number of elements
-  size_t num_bytes[4];  // stride in bytes:
-                 // nb[0] = sizeof(type)
-                 // nb[1] = nb[0]   * ne[0] + padding
-                 // nb[i] = nb[i-1] * ne[i-1]
+  size_t num_bytes[4];     // stride in bytes:
+                           // nb[0] = sizeof(type)
+                           // nb[1] = nb[0]   * ne[0] + padding
+                           // nb[i] = nb[i-1] * ne[i-1]
 
   device struct ggml_tensor *x;
   device struct ggml_tensor *y;
@@ -20,7 +21,6 @@ typedef struct {
   float d;            // delta
   uint8_t qs[QK / 2]; // nibbles / quants
 } block_q4_0;
-
 
 struct ggml_compute_params {
   int ith;
@@ -55,7 +55,6 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
   const int ith = params->ith;
   const int nth = params->nth;
 
-
   // total rows in src0
   const int nr = ne01 * ne02 * ne03;
 
@@ -66,7 +65,7 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
   const int ir0 = dr * ith;
   const int ir1 = MIN(ir0 + dr, nr);
 
-  device void *wdata = params->wdata;
+  auto wdata = params->wdata;
   const size_t row_size = ne00 * sizeof(block_q4_0) / QK;
 
   for (int ir = ir0; ir < ir1; ++ir) {
@@ -75,25 +74,22 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
     const int i02 = (ir - i03 * ne02 * ne01) / ne01;
     const int i01 = (ir - i03 * ne02 * ne01 - i02 * ne01);
 
-    device void *src0_row =
-        (device void *)((device char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
-    device char *src1_col =
-        ((device char *)wdata + ((0 + i02 * ne11 + i03 * ne12 * ne11) * row_size));
+    auto src0_row = ((device char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
+    auto src1_col = ((device char *)wdata + ((0 + i02 * ne11 + i03 * ne12 * ne11) * row_size));
 
-    device float *dst_col = (device float *)((device char *)dst->data +
-                               (i01 * nb0 + 0 * nb1 + i02 * nb2 + i03 * nb3));
-
+    size_t offset = i01 * nb0 + 0 * nb1 + i02 * nb2 + i03 * nb3;
+    auto dst_col = (device float *)((device char *)dst->data + offset);
 
     for (int64_t ic = 0; ic < ne11; ++ic) {
       const int n = ne00;
-      device float * s = &dst_col[ic * ne0];
-      device const void * vx = src0_row;
-      device const void * vy = (device void *)(src1_col + ic * row_size);
+      auto s = &dst_col[ic * ne0];
+      auto vx = src0_row;
+      auto vy = src1_col + ic * row_size;
 
       const int nb = n / QK;
 
-      device const block_q4_0 * x = ( device const block_q4_0 *)vx;
-      device const block_q4_0 * y = ( device const block_q4_0 *)vy;
+      auto x = (device const block_q4_0 *)vx;
+      auto y = (device const block_q4_0 *)vy;
 
       float sumf = 0.0;
 
@@ -102,8 +98,8 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
         const float d0 = x[i].d;
         const float d1 = y[i].d;
 
-        device const uint8_t * p0 = x[i].qs;
-        device const uint8_t * p1 = y[i].qs;
+        auto p0 = x[i].qs;
+        auto p1 = y[i].qs;
 
         int sumi = 0;
         for (int j = 0; j < QK / 2; j++) {
