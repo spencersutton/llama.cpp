@@ -1,9 +1,3 @@
-#include <assert.h>
-#include <float.h>
-#include <math.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 
 #define QK 32
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -16,10 +10,10 @@ struct ggml_tensor {
                  // nb[1] = nb[0]   * ne[0] + padding
                  // nb[i] = nb[i-1] * ne[i-1]
 
-  struct ggml_tensor *x;
-  struct ggml_tensor *y;
+  device struct ggml_tensor *x;
+  device struct ggml_tensor *y;
 
-  void *data;
+  device void *data;
 };
 
 typedef struct {
@@ -33,12 +27,12 @@ struct ggml_compute_params {
   int nth;
 
   // work buffer for all threads
-  void *wdata;
+  device void *wdata;
 };
 
-static void ggml_compute_forward_mul_mat_q_f32(
-    const struct ggml_compute_params *params, const struct ggml_tensor *src0,
-    const struct ggml_tensor *src1, struct ggml_tensor *dst) {
+kernel void ggml_compute_forward_mul_mat_q_f32(
+    const device struct ggml_compute_params  *params, const device struct ggml_tensor *src0,
+    const device struct ggml_tensor *src1, device struct ggml_tensor *dst) {
   const int64_t ne00 = src0->num_elements[0];
   const int64_t ne01 = src0->num_elements[1];
   const int64_t ne02 = src0->num_elements[2];
@@ -72,7 +66,7 @@ static void ggml_compute_forward_mul_mat_q_f32(
   const int ir0 = dr * ith;
   const int ir1 = MIN(ir0 + dr, nr);
 
-  void *wdata = params->wdata;
+  device void *wdata = params->wdata;
   const size_t row_size = ne00 * sizeof(block_q4_0) / QK;
 
   for (int ir = ir0; ir < ir1; ++ir) {
@@ -81,29 +75,25 @@ static void ggml_compute_forward_mul_mat_q_f32(
     const int i02 = (ir - i03 * ne02 * ne01) / ne01;
     const int i01 = (ir - i03 * ne02 * ne01 - i02 * ne01);
 
-    void *src0_row =
-        (void *)((char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
-    char *src1_col =
-        ((char *)wdata + ((0 + i02 * ne11 + i03 * ne12 * ne11) * row_size));
+    device void *src0_row =
+        (device void *)((device char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
+    device char *src1_col =
+        ((device char *)wdata + ((0 + i02 * ne11 + i03 * ne12 * ne11) * row_size));
 
-    float *dst_col = (float *)((char *)dst->data +
+    device float *dst_col = (device float *)((device char *)dst->data +
                                (i01 * nb0 + 0 * nb1 + i02 * nb2 + i03 * nb3));
 
-    assert(ne00 % 32 == 0);
 
     for (int64_t ic = 0; ic < ne11; ++ic) {
       const int n = ne00;
-      float *restrict s = &dst_col[ic * ne0];
-      const void *restrict vx = src0_row;
-      const void *restrict vy = (void *)(src1_col + ic * row_size);
+      device float * s = &dst_col[ic * ne0];
+      device const void * vx = src0_row;
+      device const void * vy = (device void *)(src1_col + ic * row_size);
 
       const int nb = n / QK;
 
-      assert(n % QK == 0);
-      assert(nb % 2 == 0);
-
-      const block_q4_0 *restrict x = vx;
-      const block_q4_0 *restrict y = vy;
+      device const block_q4_0 * x = ( device const block_q4_0 *)vx;
+      device const block_q4_0 * y = ( device const block_q4_0 *)vy;
 
       float sumf = 0.0;
 
@@ -112,8 +102,8 @@ static void ggml_compute_forward_mul_mat_q_f32(
         const float d0 = x[i].d;
         const float d1 = y[i].d;
 
-        const uint8_t *restrict p0 = x[i].qs;
-        const uint8_t *restrict p1 = y[i].qs;
+        device const uint8_t * p0 = x[i].qs;
+        device const uint8_t * p1 = y[i].qs;
 
         int sumi = 0;
         for (int j = 0; j < QK / 2; j++) {
