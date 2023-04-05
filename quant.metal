@@ -53,19 +53,18 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
   const int nth = params->nth;
 
   // total rows in src0
-  const int nr = src0->ne[1] * src0->ne[2] * src0->ne[3];
+  const int num_rows = src0->ne[1] * src0->ne[2] * src0->ne[3];
 
   // rows per thread
-  const int dr = (nr + nth - 1) / nth;
+  const int row_thread = (num_rows + nth - 1) / nth;
 
   // row range for this thread
-  const int ir0 = dr * ith;
-  const int ir1 = MIN(ir0 + dr, nr);
+  const int row_start = row_thread * ith;
+  const int row_end = MIN(row_start + row_thread, num_rows);
 
-  auto wdata = params->wdata;
   const size_t row_size = src0->ne[0] * sizeof(block_q4_0) / QK;
 
-  for (int ir = ir0; ir < ir1; ++ir) {
+  for (int ir = row_start; ir < row_end; ++ir) {
     // src0 indices
     const int i03 = ir / (src0->ne[2] * src0->ne[1]);
     const int i02 = (ir - i03 * src0->ne[2] * src0->ne[1]) / src0->ne[1];
@@ -74,7 +73,7 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
     auto src0_row = (device char *)src0->data +
                     (i01 * src0->nb[1] + i02 * src0->nb[2] + i03 * src0->nb[3]);
     auto src1_col =
-        (device char *)wdata +
+        (device char *)params->wdata +
         ((0 + i02 * src1->ne[1] + i03 * src1->ne[2] * src1->ne[1]) * row_size);
 
     auto dst_col = (device float *)((device char *)dst->data +
