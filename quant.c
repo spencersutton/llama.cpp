@@ -11,10 +11,10 @@
 struct ggml_tensor {
   int n_dims;
   int64_t num_elements[4]; // number of elements
-  size_t num_bytes[4];  // stride in bytes:
-                 // nb[0] = sizeof(type)
-                 // nb[1] = nb[0]   * ne[0] + padding
-                 // nb[i] = nb[i-1] * ne[i-1]
+  size_t num_bytes[4];     // stride in bytes:
+                           // nb[0] = sizeof(type)
+                           // nb[1] = nb[0]   * ne[0] + padding
+                           // nb[i] = nb[i-1] * ne[i-1]
 
   struct ggml_tensor *x;
   struct ggml_tensor *y;
@@ -26,7 +26,6 @@ typedef struct {
   float d;            // delta
   uint8_t qs[QK / 2]; // nibbles / quants
 } block_q4_0;
-
 
 struct ggml_compute_params {
   int ith;
@@ -60,7 +59,6 @@ static void ggml_compute_forward_mul_mat_q_f32(
 
   const int ith = params->ith;
   const int nth = params->nth;
-
 
   // total rows in src0
   const int nr = ne01 * ne02 * ne03;
