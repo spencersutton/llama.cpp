@@ -64,11 +64,11 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
 
   const size_t row_size = src0->ne[0] * sizeof(block_q4_0) / QK;
 
-  for (int ir = row_start; ir < row_end; ++ir) {
+  for (int i = row_start; i < row_end; ++i) {
     // src0 indices
-    const int i03 = ir / (src0->ne[2] * src0->ne[1]);
-    const int i02 = (ir - i03 * src0->ne[2] * src0->ne[1]) / src0->ne[1];
-    const int i01 = (ir - i03 * src0->ne[2] * src0->ne[1] - i02 * src0->ne[1]);
+    const int i03 = i / (src0->ne[2] * src0->ne[1]);
+    const int i02 = (i - i03 * src0->ne[2] * src0->ne[1]) / src0->ne[1];
+    const int i01 = (i - i03 * src0->ne[2] * src0->ne[1] - i02 * src0->ne[1]);
 
     auto src0_row = (device char *)src0->data +
                     (i01 * src0->nb[1] + i02 * src0->nb[2] + i03 * src0->nb[3]);
@@ -80,20 +80,20 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
                                     (i01 * dst->nb[0] + 0 * dst->nb[1] +
                                      i02 * dst->nb[2] + i03 * dst->nb[3]));
 
-    for (int64_t ic = 0; ic < src1->ne[1]; ++ic) {
+    for (int64_t j = 0; j < src1->ne[1]; ++j) {
       const int nb = src0->ne[0] / QK;
 
       auto x = (device const block_q4_0 *)src0_row;
-      auto y = (device const block_q4_0 *)(src1_col + ic * row_size);
+      auto y = (device const block_q4_0 *)(src1_col + j * row_size);
 
       float sumf = 0.0;
 
       // scalar
-      for (int i = 0; i < nb; i++) {
+      for (int k = 0; k < nb; k++) {
         int sumi = 0;
-        for (ulong j = 0; j < sizeof(x[i].qs); j++) {
-          const int v0 = x[i].qs[j];
-          const int v1 = y[i].qs[j];
+        for (ulong l = 0; l < sizeof(x[k].qs); l++) {
+          const int v0 = x[k].qs[l];
+          const int v1 = y[k].qs[l];
 
           const int i0 = extract_bits(v0, 4, 4) - 8;
           const int i1 = extract_bits(v0, 0, 4) - 8;
@@ -103,10 +103,10 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
 
           sumi += i0 * i2 + i1 * i3;
         }
-        sumf += x[i].d * y[i].d * sumi;
+        sumf += x[k].d * y[k].d * sumi;
       }
 
-      dst_col[ic * dst->ne[0]] = sumf;
+      dst_col[j * dst->ne[0]] = sumf;
     }
   }
 }
