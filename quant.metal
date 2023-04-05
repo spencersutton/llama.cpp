@@ -8,8 +8,8 @@ using namespace metal;
 
 struct ggml_tensor {
   int n_dims;
-  int64_t num_elements[4]; // number of elements
-  size_t num_bytes[4];     // stride in bytes:
+  int64_t ne[4]; // number of elements
+  size_t nb[4];     // stride in bytes:
                            // nb[0] = sizeof(type)
                            // nb[1] = nb[0]   * ne[0] + padding
                            // nb[i] = nb[i-1] * ne[i-1]
@@ -37,24 +37,24 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
     const device struct ggml_compute_params *params,
     const device struct ggml_tensor *src0,
     const device struct ggml_tensor *src1, device struct ggml_tensor *dst) {
-  const int64_t ne00 = src0->num_elements[0];
-  const int64_t ne01 = src0->num_elements[1];
-  const int64_t ne02 = src0->num_elements[2];
-  const int64_t ne03 = src0->num_elements[3];
+  const int64_t ne00 = src0->ne[0];
+  const int64_t ne01 = src0->ne[1];
+  const int64_t ne02 = src0->ne[2];
+  const int64_t ne03 = src0->ne[3];
 
-  const int64_t ne11 = src1->num_elements[1];
-  const int64_t ne12 = src1->num_elements[2];
+  const int64_t ne11 = src1->ne[1];
+  const int64_t ne12 = src1->ne[2];
 
-  const int64_t ne0 = dst->num_elements[0];
+  const int64_t ne0 = dst->ne[0];
 
-  const int nb01 = src0->num_bytes[1];
-  const int nb02 = src0->num_bytes[2];
-  const int nb03 = src0->num_bytes[3];
+  const int nb01 = src0->nb[1];
+  const int nb02 = src0->nb[2];
+  const int nb03 = src0->nb[3];
 
-  const int nb0 = dst->num_bytes[0];
-  const int nb1 = dst->num_bytes[1];
-  const int nb2 = dst->num_bytes[2];
-  const int nb3 = dst->num_bytes[3];
+  const int nb0 = dst->nb[0];
+  const int nb1 = dst->nb[1];
+  const int nb2 = dst->nb[2];
+  const int nb3 = dst->nb[3];
 
   const int ith = params->ith;
   const int nth = params->nth;
