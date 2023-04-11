@@ -14,64 +14,9 @@ typedef unsigned long ulong;
 #include <stdlib.h>
 #endif
 
-#define GGML_MAX_DIMS 4
-#define GGML_MAX_OPT 4
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define QK 32
 
 using namespace metal;
-
-// available tensor operations:
-enum ggml_op {
-  GGML_OP_NONE = 0,
-
-  GGML_OP_DUP,
-  GGML_OP_ADD,
-  GGML_OP_SUB,
-  GGML_OP_MUL,
-  GGML_OP_DIV,
-  GGML_OP_SQR,
-  GGML_OP_SQRT,
-  GGML_OP_SUM,
-  GGML_OP_MEAN,
-  GGML_OP_REPEAT,
-  GGML_OP_ABS,
-  GGML_OP_SGN,
-  GGML_OP_NEG,
-  GGML_OP_STEP,
-  GGML_OP_RELU,
-  GGML_OP_GELU,
-  GGML_OP_SILU,
-  GGML_OP_NORM, // normalize
-  GGML_OP_RMS_NORM,
-
-  GGML_OP_MUL_MAT,
-
-  GGML_OP_SCALE,
-  GGML_OP_CPY,
-  GGML_OP_CONT,
-  GGML_OP_RESHAPE,
-  GGML_OP_VIEW,
-  GGML_OP_PERMUTE,
-  GGML_OP_TRANSPOSE,
-  GGML_OP_GET_ROWS,
-  GGML_OP_DIAG_MASK_INF,
-  GGML_OP_SOFT_MAX,
-  GGML_OP_ROPE,
-  GGML_OP_CONV_1D_1S,
-  GGML_OP_CONV_1D_2S,
-
-  GGML_OP_FLASH_ATTN,
-  GGML_OP_FLASH_FF,
-
-  GGML_OP_COUNT,
-};
-
-enum ggml_task_type {
-  GGML_TASK_INIT = 0,
-  GGML_TASK_COMPUTE,
-  GGML_TASK_FINALIZE,
-};
 
 struct ggml_compute_params {
   int ith;
@@ -82,18 +27,18 @@ struct ggml_compute_params {
 };
 
 typedef struct {
-  float d;            // delta
-  uint8_t qs[QK / 2]; // nibbles / quants
+  float d;        // delta
+  uint8_t qs[16]; // nibbles / quants
 } block_q4_0;
 
 // n-dimensional tensor
 struct ggml_tensor {
 
-  int64_t size[GGML_MAX_DIMS]; // number of elements
-  size_t nb[GGML_MAX_DIMS];    // stride in bytes:
-                               // nb[0] = sizeof(type)
-                               // nb[1] = nb[0]   * ne[0] + padding
-                               // nb[i] = nb[i-1] * ne[i-1]
+  int64_t size[4];     // number of elements
+  size_t num_bytes[4]; // stride in bytes:
+                       // nb[0] = sizeof(type)
+                       // nb[1] = nb[0]   * ne[0] + padding
+                       // nb[i] = nb[i-1] * ne[i-1]
 
   // compute data
 
@@ -104,7 +49,8 @@ struct ggml_tensor {
 };
 
 void ggml_compute_forward_mul_mat_q_f32(
-    device const struct ggml_compute_params *params,
+    int ith, int nth,
+    device char *wdata, // work buffer for all threads
     device const struct ggml_tensor *src0,
     device const struct ggml_tensor *src1, device struct ggml_tensor *dst) {
 
@@ -114,25 +60,25 @@ void ggml_compute_forward_mul_mat_q_f32(
   const int num_rows = src0->size[1] * src0->size[2] * src0->size[3];
 
   // rows per thread
-  const int num_rows_per_thread = (num_rows + params->nth - 1) / params->nth;
+  const int num_rows_per_thread = (num_rows + nth - 1) / nth;
 
-  const int thread_id = params->ith;
+  const int thread_id = ith;
 
   // row range for this thread
   const int start_row = num_rows_per_thread * thread_id;
 
-  const size_t row_size = src0->size[0] * sizeof(block_q4_0) / QK;
+  const size_t row_size = src0->size[0] * sizeof(block_q4_0) / 32;
 
   for (int row_idx = start_row;
        row_idx < MIN(start_row + num_rows_per_thread, num_rows); ++row_idx) {
     // src0 indices
 
     auto src0_row = (device block_q4_0 *)((device char *)src0->data +
-                                          (row_idx * src0->nb[1]));
-    auto src1_col = (device char *)params->wdata;
+                                          (row_idx * src0->num_bytes[1]));
+    auto src1_col = wdata;
 
-    auto dst_col =
-        (device float *)((device char *)dst->data + (row_idx * dst->nb[0]));
+    auto dst_col = (device float *)((device char *)dst->data +
+                                    (row_idx * dst->num_bytes[0]));
 
     for (int64_t col_idx = 0; col_idx < src1->size[1]; ++col_idx) {
       const auto x = (device block_q4_0 *)src0_row;
@@ -140,11 +86,11 @@ void ggml_compute_forward_mul_mat_q_f32(
 
       float sumf = 0.0;
 
-      for (int i = 0; i < src0->size[0] / QK; i++) {
+      for (int i = 0; i < src0->size[0] / 32; i++) {
         const float d0 = x[i].d;
         const float d1 = y[i].d;
 
-        for (int j = 0; j < QK / 2; j++) {
+        for (int j = 0; j < 16; j++) {
           const uint8_t v0 = x[i].qs[j];
           const uint8_t v1 = y[i].qs[j];
 
