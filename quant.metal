@@ -72,12 +72,10 @@ enum ggml_task_type {
 };
 
 struct ggml_compute_params {
-  enum ggml_task_type type;
-
-  int ith, nth;
+  int ith;
+  int nth;
 
   // work buffer for all threads
-  size_t wsize;
   device void *wdata;
 };
 
@@ -86,23 +84,9 @@ typedef struct {
   uint8_t qs[QK / 2]; // nibbles / quants
 } block_q4_0;
 
-enum ggml_type {
-  // explicitly numbered values are used in llama.cpp files
-  GGML_TYPE_F32 = 0,
-  GGML_TYPE_F16 = 1,
-  GGML_TYPE_Q4_0 = 2,
-  GGML_TYPE_Q4_1 = 3,
-  GGML_TYPE_I8,
-  GGML_TYPE_I16,
-  GGML_TYPE_I32,
-  GGML_TYPE_COUNT,
-};
-
 // n-dimensional tensor
 struct ggml_tensor {
-  enum ggml_type type;
 
-  int n_dims;
   int64_t size[GGML_MAX_DIMS]; // number of elements
   size_t nb[GGML_MAX_DIMS];    // stride in bytes:
                                // nb[0] = sizeof(type)
@@ -110,34 +94,17 @@ struct ggml_tensor {
                                // nb[i] = nb[i-1] * ne[i-1]
 
   // compute data
-  enum ggml_op op;
 
-  bool is_param;
-
-  device struct ggml_tensor *grad;
   device struct ggml_tensor *src0;
   device struct ggml_tensor *src1;
-  device struct ggml_tensor *opt[GGML_MAX_OPT];
-
-  // thread scheduling
-  int n_tasks;
-
-  // performance
-  int perf_runs;
-  int64_t perf_cycles;
-  int64_t perf_time_us;
 
   device void *data;
-  char padding[8];
 };
 
 void ggml_compute_forward_mul_mat_q_f32(
     device const struct ggml_compute_params *params,
     device const struct ggml_tensor *src0,
     device const struct ggml_tensor *src1, device struct ggml_tensor *dst) {
-
-  assert(params->type != GGML_TASK_INIT);
-  assert(params->type != GGML_TASK_FINALIZE);
 
   // parallelize by src0 rows using ggml_vec_dot_q
 
