@@ -4614,14 +4614,6 @@ static void ggml_compute_forward_mul_mat_q_f32(
 
   const int64_t ne0 = dst->ne[0];
 
-  const int nb01 = src0->nb[1];
-  const int nb02 = src0->nb[2];
-  const int nb03 = src0->nb[3];
-
-  const int nb11 = src1->nb[1];
-  const int nb12 = src1->nb[2];
-  const int nb13 = src1->nb[3];
-
   const int ith = params->ith;
   const int nth = params->nth;
 
@@ -4642,8 +4634,8 @@ static void ggml_compute_forward_mul_mat_q_f32(
     for (int64_t i13 = 0; i13 < ne13; ++i13) {
       for (int64_t i12 = 0; i12 < ne12; ++i12) {
         for (int64_t i11 = 0; i11 < ne11; ++i11) {
-          quantize_row_q((float *)((char *)src1->data + i13 * nb13 +
-                                   i12 * nb12 + i11 * nb11),
+          quantize_row_q((float *)((char *)src1->data + i13 * src1->nb[3] +
+                                   i12 * src1->nb[2] + i11 * src1->nb[1]),
                          (void *)wdata, ne10);
           wdata += row_size;
         }
@@ -4667,21 +4659,21 @@ static void ggml_compute_forward_mul_mat_q_f32(
 
   // row range for this thread
   const int ir0 = dr * ith;
-  const int ir1 = MIN(ir0 + dr, nr);
 
-  void *wdata = params->wdata;
   const size_t row_size = ne00 * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
 
-  for (int ir = ir0; ir < ir1; ++ir) {
+  for (int ir = ir0; ir < MIN(ir0 + dr, nr); ++ir) {
     // src0 indices
     const int i03 = ir / (ne02 * ne01);
     const int i02 = (ir - i03 * ne02 * ne01) / ne01;
     const int i01 = (ir - i03 * ne02 * ne01 - i02 * ne01);
 
-    void *src0_row =
-        (void *)((char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
+    block_q4_0 *src0_row =
+        (block_q4_0 *)((char *)src0->data +
+                       (i01 * src0->nb[1] + i02 * src0->nb[2] +
+                        i03 * src0->nb[3]));
     char *src1_col =
-        ((char *)wdata +
+        ((char *)params->wdata +
          ((0 + i02 * src1->ne[1] + i03 * ne12 * src1->ne[1]) * row_size));
 
     float *dst_col =
@@ -4723,7 +4715,7 @@ static void ggml_compute_forward_mul_mat_q_f32(
         }
       }
 
-      dst_col[ic * ne0] = sumf;
+      dst_col[ic * dst->ne[0]] = sumf;
     }
   }
 }
