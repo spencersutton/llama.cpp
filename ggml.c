@@ -4672,7 +4672,7 @@ static void ggml_compute_forward_mul_mat_q_f32(
       assert(nb % 2 == 0);
 
       const block_q4_0 *restrict x = src0_row;
-      const block_q4_0 *restrict y = (void *)(src1_col + col_index * row_size);
+      const block_q4_0 *restrict y = (void *)&src1_col[col_index * row_size];
 
       float sumf = 0.0;
 
