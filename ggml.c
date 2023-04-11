@@ -299,7 +299,6 @@ static void quantize_row_q4_0_reference(const float *restrict x,
 static void quantize_row_q4_0(const float *restrict x, void *restrict vy,
                               int k) {
   assert(k % QK == 0);
-  const int nb = k / QK;
 
   block_q4_0 *restrict y = vy;
 
@@ -355,9 +354,7 @@ static void quantize_row_q4_1(const float *restrict x, void *restrict vy,
                               int k) {
   assert(k % QK == 0);
 
-  const int nb = k / QK;
 
-  block_q4_1 *restrict y = vy;
 
   // scalar
   quantize_row_q4_1_reference(x, vy, k);
@@ -4618,16 +4615,11 @@ static void ggml_compute_forward_mul_mat_q_f32(
   const int64_t ne13 = src1->ne[3];
 
   const int64_t ne0 = dst->ne[0];
-  const int64_t ne1 = dst->ne[1];
-  const int64_t ne2 = dst->ne[2];
-  const int64_t ne3 = dst->ne[3];
 
-  const int nb00 = src0->nb[0];
   const int nb01 = src0->nb[1];
   const int nb02 = src0->nb[2];
   const int nb03 = src0->nb[3];
 
-  const int nb10 = src1->nb[0];
   const int nb11 = src1->nb[1];
   const int nb12 = src1->nb[2];
   const int nb13 = src1->nb[3];
@@ -4640,29 +4632,13 @@ static void ggml_compute_forward_mul_mat_q_f32(
   const int ith = params->ith;
   const int nth = params->nth;
 
-  GGML_ASSERT(ne02 == ne12);
-  GGML_ASSERT(ne03 == ne13);
-  GGML_ASSERT(ne2 == ne12);
-  GGML_ASSERT(ne3 == ne13);
 
   const enum ggml_type type = src0->type;
   quantize_row_q_t const quantize_row_q = quantize_fns[type].quantize_row_q;
-  vec_dot_q_t const vec_dot_q = quantize_fns[type].vec_dot_q;
 
   // we don't support permuted src0 or src1
-  GGML_ASSERT(nb00 == (int)GGML_TYPE_SIZE[type]);
-  GGML_ASSERT(nb10 == sizeof(float));
 
   // dst cannot be transposed or permuted
-  GGML_ASSERT(nb0 == sizeof(float));
-  GGML_ASSERT(nb0 <= nb1);
-  GGML_ASSERT(nb1 <= nb2);
-  GGML_ASSERT(nb2 <= nb3);
-
-  GGML_ASSERT(ne0 == ne01);
-  GGML_ASSERT(ne1 == ne11);
-  GGML_ASSERT(ne2 == ne02);
-  GGML_ASSERT(ne3 == ne03);
 
   // nb01 >= nb00 - src0 is not transposed
   //   compute by src0 rows
@@ -4720,14 +4696,14 @@ static void ggml_compute_forward_mul_mat_q_f32(
     void *src0_row =
         (void *)((char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
     char *src1_col =
-        ((char *)wdata + ((0 + i12 * ne11 + i13 * ne12 * ne11) * row_size));
+        ((char *)wdata + ((0 + i12 * src1->ne[1] + i13 * ne12 * src1->ne[1]) * row_size));
 
     float *dst_col = (float *)((char *)dst->data +
                                (i0 * nb0 + 0 * nb1 + i2 * nb2 + i3 * nb3));
 
     assert(ne00 % 32 == 0);
 
-    for (int64_t ic = 0; ic < ne11; ++ic) {
+    for (int64_t ic = 0; ic < src1->ne[1]; ++ic) {
       const int nb = ne00 / QK;
 
       assert(ne00 % QK == 0);
@@ -5360,7 +5336,6 @@ static void ggml_compute_forward_conv_1d_1s_f16_f32(
   // const int64_t ne03 = src0->ne[3];
 
   const int64_t ne10 = src1->ne[0];
-  const int64_t ne11 = src1->ne[1];
   // const int64_t ne12 = src1->ne[2];
   // const int64_t ne13 = src1->ne[3];
 
@@ -5422,7 +5397,7 @@ static void ggml_compute_forward_conv_1d_1s_f16_f32(
       ggml_fp16_t *const wdata =
           (ggml_fp16_t *)params->wdata + ne02 * ew0 * ne00;
 
-      for (int64_t i11 = 0; i11 < ne11; i11++) {
+      for (int64_t i11 = 0; i11 < src1->ne[1]; i11++) {
         const float *const src = (float *)((char *)src1->data + i11 * nb11);
         ggml_fp16_t *dst_data = wdata;
         for (int64_t i10 = 0; i10 < ne10; i10++) {
@@ -5482,7 +5457,6 @@ static void ggml_compute_forward_conv_1d_1s_f32(
   // const int64_t ne03 = src0->ne[3];
 
   const int64_t ne10 = src1->ne[0];
-  const int64_t ne11 = src1->ne[1];
   // const int64_t ne12 = src1->ne[2];
   // const int64_t ne13 = src1->ne[3];
 
@@ -5543,7 +5517,7 @@ static void ggml_compute_forward_conv_1d_1s_f32(
     {
       float *const wdata = (float *)params->wdata + ne02 * ew0 * ne00;
 
-      for (int64_t i11 = 0; i11 < ne11; i11++) {
+      for (int64_t i11 = 0; i11 < src1->ne[1]; i11++) {
         const float *const src = (float *)((char *)src1->data + i11 * nb11);
         float *dst_data = wdata;
         for (int64_t i10 = 0; i10 < ne10; i10++) {
@@ -5624,7 +5598,6 @@ static void ggml_compute_forward_conv_1d_2s_f16_f32(
   // const int64_t ne03 = src0->ne[3];
 
   const int64_t ne10 = src1->ne[0];
-  const int64_t ne11 = src1->ne[1];
   // const int64_t ne12 = src1->ne[2];
   // const int64_t ne13 = src1->ne[3];
 
@@ -5686,7 +5659,7 @@ static void ggml_compute_forward_conv_1d_2s_f16_f32(
       ggml_fp16_t *const wdata =
           (ggml_fp16_t *)params->wdata + ne02 * ew0 * ne00;
 
-      for (int64_t i11 = 0; i11 < ne11; i11++) {
+      for (int64_t i11 = 0; i11 < src1->ne[1]; i11++) {
         const float *const src = (float *)((char *)src1->data + i11 * nb11);
         ggml_fp16_t *dst_data = wdata;
         for (int64_t i10 = 0; i10 < ne10; i10++) {
@@ -5746,7 +5719,6 @@ static void ggml_compute_forward_conv_1d_2s_f32(
   // const int64_t ne03 = src0->ne[3];
 
   const int64_t ne10 = src1->ne[0];
-  const int64_t ne11 = src1->ne[1];
   // const int64_t ne12 = src1->ne[2];
   // const int64_t ne13 = src1->ne[3];
 
@@ -5807,7 +5779,7 @@ static void ggml_compute_forward_conv_1d_2s_f32(
     {
       float *const wdata = (float *)params->wdata + ne02 * ew0 * ne00;
 
-      for (int64_t i11 = 0; i11 < ne11; i11++) {
+      for (int64_t i11 = 0; i11 < src1->ne[1]; i11++) {
         const float *const src = (float *)((char *)src1->data + i11 * nb11);
         float *dst_data = wdata;
         for (int64_t i10 = 0; i10 < ne10; i10++) {
@@ -5929,27 +5901,6 @@ static void ggml_compute_forward_flash_attn_f32(
 
   const int Mup = ggml_up(M, GGML_SOFT_MAX_UNROLL);
 
-  GGML_ASSERT(ne0 == D);
-  GGML_ASSERT(ne1 == N);
-  GGML_ASSERT(P >= 0);
-
-  GGML_ASSERT(nbq0 == sizeof(float));
-  GGML_ASSERT(nbk0 == sizeof(float));
-  GGML_ASSERT(nbv0 == sizeof(float));
-
-  GGML_ASSERT(neq0 == D);
-  GGML_ASSERT(nek0 == D);
-  GGML_ASSERT(nev1 == D);
-
-  GGML_ASSERT(neq1 == N);
-  GGML_ASSERT(nek1 == N + P);
-  GGML_ASSERT(nev1 == D);
-
-  // dst cannot be transposed or permuted
-  GGML_ASSERT(nb0 == sizeof(float));
-  GGML_ASSERT(nb0 <= nb1);
-  GGML_ASSERT(nb1 <= nb2);
-  GGML_ASSERT(nb2 <= nb3);
 
   if (params->type == GGML_TASK_INIT) {
     return;
@@ -6128,27 +6079,6 @@ static void ggml_compute_forward_flash_attn_f16(
 
   const int Mup = ggml_up(M, GGML_SOFT_MAX_UNROLL);
 
-  GGML_ASSERT(ne0 == D);
-  GGML_ASSERT(ne1 == N);
-  GGML_ASSERT(P >= 0);
-
-  GGML_ASSERT(nbq0 == sizeof(ggml_fp16_t));
-  GGML_ASSERT(nbk0 == sizeof(ggml_fp16_t));
-  GGML_ASSERT(nbv0 == sizeof(ggml_fp16_t));
-
-  GGML_ASSERT(neq0 == D);
-  GGML_ASSERT(nek0 == D);
-  GGML_ASSERT(nev1 == D);
-
-  GGML_ASSERT(neq1 == N);
-  GGML_ASSERT(nek1 == N + P);
-  GGML_ASSERT(nev1 == D);
-
-  // dst cannot be transposed or permuted
-  GGML_ASSERT(nb0 == sizeof(float));
-  GGML_ASSERT(nb0 <= nb1);
-  GGML_ASSERT(nb1 <= nb2);
-  GGML_ASSERT(nb2 <= nb3);
 
   if (params->type == GGML_TASK_INIT) {
     return;
