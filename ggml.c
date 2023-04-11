@@ -4668,12 +4668,12 @@ static void ggml_compute_forward_mul_mat_q_f32(
                         i03 * src0->nb[3]));
     char *src1_col =
         ((char *)params->wdata +
-         ((0 + i02 * src1->size[1] + i03 * src1->size[2] * src1->size[1]) *
+         ((i02 * src1->size[1] + i03 * src1->size[2] * src1->size[1]) *
           row_size));
 
     float *dst_col =
-        (float *)((char *)dst->data + (i01 * dst->nb[0] + 0 * dst->nb[1] +
-                                       i02 * dst->nb[2] + i03 * dst->nb[3]));
+        (float *)((char *)dst->data +
+                  (i01 * dst->nb[0] + i02 * dst->nb[2] + i03 * dst->nb[3]));
 
     assert(src0->size[0] % 32 == 0);
 
@@ -4960,7 +4960,8 @@ static void ggml_compute_forward_get_rows(
   //     for (int k = 0; k < dst->size[1]; ++k) {
   //         for (int j = 0; j < dst->size[0]/16; ++j) {
   //             for (int i = 0; i < 16; ++i) {
-  //                 printf("%8.4f ", ((float *) dst->data)[k*dst->size[0] + j*16
+  //                 printf("%8.4f ", ((float *) dst->data)[k*dst->size[0] +
+  //                 j*16
   //                 + i]);
   //             }
   //             printf("\n");
