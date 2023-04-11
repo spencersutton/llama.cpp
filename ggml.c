@@ -4656,9 +4656,9 @@ static void ggml_compute_forward_mul_mat_q_f32(
        row_index < MIN(start_row + num_rows_per_thread, num_rows);
        ++row_index) {
     // src0 indices
-    const int i03 = row_index / (src0->size[2] * src0->size[1]);
-    const int i02 =
-        (row_index - i03 * src0->size[2] * src0->size[1]) / src0->size[1];
+    const int i03 = 0;
+    const int i02 = 0;
+
     const int i01 =
         (row_index - i03 * src0->size[2] * src0->size[1] - i02 * src0->size[1]);
 
