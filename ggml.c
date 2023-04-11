@@ -354,8 +354,6 @@ static void quantize_row_q4_1(const float *restrict x, void *restrict vy,
                               int k) {
   assert(k % QK == 0);
 
-
-
   // scalar
   quantize_row_q4_1_reference(x, vy, k);
 }
@@ -4624,14 +4622,8 @@ static void ggml_compute_forward_mul_mat_q_f32(
   const int nb12 = src1->nb[2];
   const int nb13 = src1->nb[3];
 
-  const int nb0 = dst->nb[0];
-  const int nb1 = dst->nb[1];
-  const int nb2 = dst->nb[2];
-  const int nb3 = dst->nb[3];
-
   const int ith = params->ith;
   const int nth = params->nth;
-
 
   const enum ggml_type type = src0->type;
   quantize_row_q_t const quantize_row_q = quantize_fns[type].quantize_row_q;
@@ -4686,20 +4678,15 @@ static void ggml_compute_forward_mul_mat_q_f32(
     const int i02 = (ir - i03 * ne02 * ne01) / ne01;
     const int i01 = (ir - i03 * ne02 * ne01 - i02 * ne01);
 
-    const int i13 = i03;
-    const int i12 = i02;
-
-    const int i0 = i01;
-    const int i2 = i02;
-    const int i3 = i03;
-
     void *src0_row =
         (void *)((char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
     char *src1_col =
-        ((char *)wdata + ((0 + i12 * src1->ne[1] + i13 * ne12 * src1->ne[1]) * row_size));
+        ((char *)wdata +
+         ((0 + i02 * src1->ne[1] + i03 * ne12 * src1->ne[1]) * row_size));
 
-    float *dst_col = (float *)((char *)dst->data +
-                               (i0 * nb0 + 0 * nb1 + i2 * nb2 + i3 * nb3));
+    float *dst_col =
+        (float *)((char *)dst->data + (i01 * dst->nb[0] + 0 * dst->nb[1] +
+                                       i02 * dst->nb[2] + i03 * dst->nb[3]));
 
     assert(ne00 % 32 == 0);
 
@@ -5164,7 +5151,6 @@ static void ggml_compute_forward_rope_f32(
   const int64_t ne3 = src0->ne[3];
 
   const int nb0 = src0->nb[0];
-  const int nb1 = src0->nb[1];
   const int nb2 = src0->nb[2];
   const int nb3 = src0->nb[3];
 
@@ -5203,10 +5189,11 @@ static void ggml_compute_forward_rope_f32(
           const float cos_theta = cosf(p * theta);
           const float sin_theta = sinf(p * theta);
 
-          const float *const src = (float *)((char *)src0->data + i3 * nb3 +
-                                             i2 * nb2 + i1 * nb1 + i0 * nb0);
+          const float *const src =
+              (float *)((char *)src0->data + i3 * nb3 + i2 * nb2 +
+                        i1 * dst->nb[1] + i0 * nb0);
           float *dst_data = (float *)((char *)dst->data + i3 * nb3 + i2 * nb2 +
-                                      i1 * nb1 + i0 * nb0);
+                                      i1 * dst->nb[1] + i0 * nb0);
 
           const float x0 = src[0];
           const float x1 = src[1];
@@ -5279,10 +5266,10 @@ static void ggml_compute_forward_rope_f16(
           const float sin_theta = sinf(p * theta);
 
           const ggml_fp16_t *const src =
-              (ggml_fp16_t *)((char *)src0->data + i3 * nb3 + i2 * nb2 +
+              (ggml_fp16_t *)((char *)src0->data + i3 * nb3 + i2 * dst->nb[2] +
                               i1 * nb1 + i0 * nb0);
           ggml_fp16_t *dst_data =
-              (ggml_fp16_t *)((char *)dst->data + i3 * nb3 + i2 * nb2 +
+              (ggml_fp16_t *)((char *)dst->data + i3 * nb3 + i2 * dst->nb[2] +
                               i1 * nb1 + i0 * nb0);
 
           const float x0 = ggml_fp16_to_fp32(src[0]);
@@ -5901,7 +5888,6 @@ static void ggml_compute_forward_flash_attn_f32(
 
   const int Mup = ggml_up(M, GGML_SOFT_MAX_UNROLL);
 
-
   if (params->type == GGML_TASK_INIT) {
     return;
   }
@@ -6078,7 +6064,6 @@ static void ggml_compute_forward_flash_attn_f16(
   const int64_t M = P + N;
 
   const int Mup = ggml_up(M, GGML_SOFT_MAX_UNROLL);
-
 
   if (params->type == GGML_TASK_INIT) {
     return;
