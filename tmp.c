@@ -57,16 +57,16 @@ static void ggml_compute_forward_mul_mat_q_f32(
            index2, index3);
     block_q4_0 *src0_row =
         (block_q4_0 *)((char *)src0->data +
-                       (index1 * src0->nb[1] + index2 * src0->nb[2] +
-                        index3 * src0->nb[3]));
+                       (index1 * src0->num_bytes[1] + index2 * src0->num_bytes[2] +
+                        index3 * src0->num_bytes[3]));
     char *src1_col =
         ((char *)params->wdata +
          ((index2 * src1->size[1] + index3 * src1->size[2] * src1->size[1]) *
           row_size));
 
     float *dst_col = (float *)((char *)dst->data +
-                               (index1 * dst->nb[0] + index2 * dst->nb[2] +
-                                index3 * dst->nb[3]));
+                               (index1 * dst->num_bytes[0] + index2 * dst->num_bytes[2] +
+                                index3 * dst->num_bytes[3]));
 
     assert(src0->size[0] % 32 == 0);
 

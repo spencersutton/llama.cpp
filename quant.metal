@@ -1,24 +1,26 @@
 #ifdef __METAL__
 #include <metal_atomic>
 #include <metal_stdlib>
-#endif
 
-#ifndef __METAL__
+using namespace metal;
+#else
+
 #define kernel
 #define constant
 #define device
+
 typedef int int4[4];
 typedef long long4[4];
 typedef unsigned long ulong;
+
 #define extract_bits(x, offset, count)                                         \
   (((x) >> (offset)) & ((1 << (count)) - 1))
+
 #include <stdint.h>
 #include <stdlib.h>
 #endif
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-
-using namespace metal;
 
 struct ggml_compute_params {
   int ith;

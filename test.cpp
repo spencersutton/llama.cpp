@@ -23,7 +23,7 @@ typedef struct {
   uint8_t qs[QK / 2]; // nibbles / quants
 } block_q4_0;
 
-static MTL::Function *addFunc = nullptr;
+static MTL::Function *vec_dot = nullptr;
 static MTL::Device *device = nullptr;
 static MTL::ComputePipelineState *state = nullptr;
 static MTL::CommandQueue *commandQueue = nullptr;
@@ -93,9 +93,9 @@ int main(int argc, const char *argv[]) {
 
   auto fn_name = NS::String::string("ggml_compute_forward_mul_mat_q_f32",
                                     NS::UTF8StringEncoding);
-  addFunc = library->newFunction(fn_name);
+  vec_dot = library->newFunction(fn_name);
 
-  state = device->newComputePipelineState(addFunc, &error);
+  state = device->newComputePipelineState(vec_dot, &error);
   if (!state) {
     printf("%s", error->localizedDescription()->utf8String());
     assert(false);
@@ -131,7 +131,7 @@ int main(int argc, const char *argv[]) {
     }
   }
 
-  addFunc->release();
+  vec_dot->release();
   library->release();
   autoreleasePool->release();
 

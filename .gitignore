@@ -39,3 +39,7 @@ zig-out/
 zig-cache/
 *.metallib
 *.air
+*.cmake
+examples/
+tests/
+test/
