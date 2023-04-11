@@ -4652,27 +4652,23 @@ static void ggml_compute_forward_mul_mat_q_f32(
   const size_t row_size =
       src0->size[0] * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
 
-  for (int row_index = start_row;
-       row_index < MIN(start_row + num_rows_per_thread, num_rows);
-       ++row_index) {
+  for (int row_idx = start_row;
+       row_idx < MIN(start_row + num_rows_per_thread, num_rows); ++row_idx) {
     // src0 indices
 
     block_q4_0 *src0_row =
-        (block_q4_0 *)((char *)src0->data + (row_index * src0->nb[1]));
-    char *src1_col = ((char *)params->wdata);
+        (block_q4_0 *)((char *)src0->data + (row_idx * src0->nb[1]));
+    char *src1_col = (char *)params->wdata;
 
-    float *dst_col = (float *)((char *)dst->data + (row_index * dst->nb[0]));
+    float *dst_col = (float *)((char *)dst->data + (row_idx * dst->nb[0]));
 
-    for (int64_t col_index = 0; col_index < src1->size[1]; ++col_index) {
-      const int nb = src0->size[0] / QK;
-
+    for (int64_t col_idx = 0; col_idx < src1->size[1]; ++col_idx) {
       const block_q4_0 *restrict x = src0_row;
-      const block_q4_0 *restrict y = (void *)&src1_col[col_index * row_size];
+      const block_q4_0 *restrict y = (void *)&src1_col[col_idx * row_size];
 
       float sumf = 0.0;
 
-      // scalar
-      for (int i = 0; i < nb; i++) {
+      for (int i = 0; i < src0->size[0] / QK; i++) {
         const float d0 = x[i].d;
         const float d1 = y[i].d;
 
@@ -4690,7 +4686,7 @@ static void ggml_compute_forward_mul_mat_q_f32(
         }
       }
 
-      dst_col[col_index * dst->size[0]] = sumf;
+      dst_col[col_idx * dst->size[0]] = sumf;
     }
   }
 }
