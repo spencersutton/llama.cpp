@@ -4602,21 +4602,6 @@ static void ggml_compute_forward_mul_mat_q_f32(
   int64_t t0 = ggml_perf_time_us();
   UNUSED(t0);
 
-  const int64_t ne00 = src0->ne[0];
-  const int64_t ne01 = src0->ne[1];
-  const int64_t ne02 = src0->ne[2];
-  const int64_t ne03 = src0->ne[3];
-
-  const int64_t ne10 = src1->ne[0];
-  const int64_t ne11 = src1->ne[1];
-  const int64_t ne12 = src1->ne[2];
-  const int64_t ne13 = src1->ne[3];
-
-  const int64_t ne0 = dst->ne[0];
-
-  const int ith = params->ith;
-  const int nth = params->nth;
-
   const enum ggml_type type = src0->type;
   quantize_row_q_t const quantize_row_q = quantize_fns[type].quantize_row_q;
 
@@ -4629,14 +4614,15 @@ static void ggml_compute_forward_mul_mat_q_f32(
 
   if (params->type == GGML_TASK_INIT) {
     char *wdata = params->wdata;
-    const size_t row_size = ne10 * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
+    const size_t row_size =
+        src1->ne[0] * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
 
-    for (int64_t i13 = 0; i13 < ne13; ++i13) {
-      for (int64_t i12 = 0; i12 < ne12; ++i12) {
-        for (int64_t i11 = 0; i11 < ne11; ++i11) {
+    for (int64_t i13 = 0; i13 < src1->ne[3]; ++i13) {
+      for (int64_t i12 = 0; i12 < src1->ne[2]; ++i12) {
+        for (int64_t i11 = 0; i11 < src1->ne[1]; ++i11) {
           quantize_row_q((float *)((char *)src1->data + i13 * src1->nb[3] +
                                    i12 * src1->nb[2] + i11 * src1->nb[1]),
-                         (void *)wdata, ne10);
+                         (void *)wdata, src1->ne[0]);
           wdata += row_size;
         }
       }
@@ -4652,21 +4638,22 @@ static void ggml_compute_forward_mul_mat_q_f32(
   // parallelize by src0 rows using ggml_vec_dot_q
 
   // total rows in src0
-  const int nr = ne01 * ne02 * ne03;
+  const int num_rows = src0->ne[1] * src0->ne[2] * src0->ne[3];
 
   // rows per thread
-  const int dr = (nr + nth - 1) / nth;
+  const int num_rows_per_thread = (num_rows + params->nth - 1) / params->nth;
 
   // row range for this thread
-  const int ir0 = dr * ith;
+  const int ir0 = num_rows_per_thread * params->ith;
 
-  const size_t row_size = ne00 * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
+  const size_t row_size =
+      src0->ne[0] * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
 
-  for (int ir = ir0; ir < MIN(ir0 + dr, nr); ++ir) {
+  for (int ir = ir0; ir < MIN(ir0 + num_rows_per_thread, num_rows); ++ir) {
     // src0 indices
-    const int i03 = ir / (ne02 * ne01);
-    const int i02 = (ir - i03 * ne02 * ne01) / ne01;
-    const int i01 = (ir - i03 * ne02 * ne01 - i02 * ne01);
+    const int i03 = ir / (src0->ne[2] * src0->ne[1]);
+    const int i02 = (ir - i03 * src0->ne[2] * src0->ne[1]) / src0->ne[1];
+    const int i01 = (ir - i03 * src0->ne[2] * src0->ne[1] - i02 * src0->ne[1]);
 
     block_q4_0 *src0_row =
         (block_q4_0 *)((char *)src0->data +
@@ -4674,18 +4661,19 @@ static void ggml_compute_forward_mul_mat_q_f32(
                         i03 * src0->nb[3]));
     char *src1_col =
         ((char *)params->wdata +
-         ((0 + i02 * src1->ne[1] + i03 * ne12 * src1->ne[1]) * row_size));
+         ((0 + i02 * src1->ne[1] + i03 * src1->ne[2] * src1->ne[1]) *
+          row_size));
 
     float *dst_col =
         (float *)((char *)dst->data + (i01 * dst->nb[0] + 0 * dst->nb[1] +
                                        i02 * dst->nb[2] + i03 * dst->nb[3]));
 
-    assert(ne00 % 32 == 0);
+    assert(src0->ne[0] % 32 == 0);
 
     for (int64_t ic = 0; ic < src1->ne[1]; ++ic) {
-      const int nb = ne00 / QK;
+      const int nb = src0->ne[0] / QK;
 
-      assert(ne00 % QK == 0);
+      assert(src0->ne[0] % QK == 0);
       assert(nb % 2 == 0);
 
       const block_q4_0 *restrict x = src0_row;
@@ -5342,10 +5330,10 @@ static void ggml_compute_forward_conv_1d_1s_f16_f32(
   const int ith = params->ith;
   const int nth = params->nth;
 
-  const int nk = ne00;
+  const int nk = src0->ne[0];
   const int nh = nk / 2;
 
-  const int ew0 = ggml_up32(ne01);
+  const int ew0 = ggml_up32(src0->ne[1]);
 
   GGML_ASSERT(ne00 % 2 == 1); // TODO: support even kernel sizes
   GGML_ASSERT(nb00 == sizeof(ggml_fp16_t));
