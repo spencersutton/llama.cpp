@@ -158,73 +158,6 @@ typedef struct {
   uint8_t qs[QK / 2]; // nibbles / quants
 } block_q4_0;
 
-static void ggml_compute_forward_mul_mat_q_f32(
-    const struct ggml_compute_params *params, const struct ggml_tensor *src0,
-    const struct ggml_tensor *src1, struct ggml_tensor *dst) {
-
-  const enum ggml_type type = src0->type;
-
-  // we don't support permuted src0 or src1
-
-  // dst cannot be transposed or permuted
-
-  // nb01 >= nb00 - src0 is not transposed
-  //   compute by src0 rows
-
-  // parallelize by src0 rows using ggml_vec_dot_q
-
-  // total rows in src0
-  const int num_rows = src0->size[1] * src0->size[2] * src0->size[3];
-
-  // rows per thread
-  const int num_rows_per_thread = (num_rows + params->nth - 1) / params->nth;
-
-  const int thread_id = params->ith;
-
-  // row range for this thread
-  const int start_row = num_rows_per_thread * thread_id;
-
-  const size_t row_size = src0->size[0] * sizeof(block_q4_0) / QK;
-
-  for (int row_idx = start_row;
-       row_idx < MIN(start_row + num_rows_per_thread, num_rows); ++row_idx) {
-    // src0 indices
-
-    block_q4_0 *src0_row =
-        (block_q4_0 *)((char *)src0->data + (row_idx * src0->nb[1]));
-    char *src1_col = (char *)params->wdata;
-
-    float *dst_col = (float *)((char *)dst->data + (row_idx * dst->nb[0]));
-
-    for (int64_t col_idx = 0; col_idx < src1->size[1]; ++col_idx) {
-      const block_q4_0 *x = src0_row;
-      const block_q4_0 *y = (block_q4_0 *)&src1_col[col_idx * row_size];
-
-      float sumf = 0.0;
-
-      for (int i = 0; i < src0->size[0] / QK; i++) {
-        const float d0 = x[i].d;
-        const float d1 = y[i].d;
-
-        for (int j = 0; j < QK / 2; j++) {
-          const uint8_t v0 = x[i].qs[j];
-          const uint8_t v1 = y[i].qs[j];
-
-          const float f0 = d0 * ((int8_t)(v0 & 0xf) - 8);
-          const float f1 = d0 * ((int8_t)(v0 >> 4) - 8);
-
-          const float f2 = d1 * ((int8_t)(v1 & 0xf) - 8);
-          const float f3 = d1 * ((int8_t)(v1 >> 4) - 8);
-
-          sumf += f0 * f2 + f1 * f3;
-        }
-      }
-
-      dst_col[col_idx * dst->size[0]] = sumf;
-    }
-  }
-}
-
 static MTL::Function *addFunc = nullptr;
 static MTL::Device *device = nullptr;
 static MTL::ComputePipelineState *state = nullptr;
@@ -284,8 +217,10 @@ int main(int argc, const char *argv[]) {
   auto deviceArray = MTL::CopyAllDevices();
   device = deviceArray->object<MTL::Device>(0);
 
-  auto library = device->newLibrary(
-      NS::String::string(kernelSrc, NS::UTF8StringEncoding), nullptr, &error);
+  NS::String *path = NS::String::string(
+      "file:///Users/spencer/ai/repos/llama.cpp/quant.metallib");
+  auto library =
+      device->newLibrary(NS::URL::fileURLWithPath(path), &error);
   if (!library) {
     printf("%s", error->localizedDescription()->utf8String());
     assert(false);
@@ -320,11 +255,7 @@ int main(int argc, const char *argv[]) {
 
   for (int i = 0; i < runs; i++) {
     float s = 0;
-    if (0) {
-      ggml_vec_dot_q4_0(64, &s, x, y);
-    } else {
-      test_ggml_vec_dot_q4_0(64, &s, x, y);
-    }
+    test_ggml_vec_dot_q4_0(64, &s, x, y);
     assert(s != 0);
 
     if (i % 100 == 0) {
