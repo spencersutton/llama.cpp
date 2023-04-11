@@ -4663,13 +4663,8 @@ static void ggml_compute_forward_mul_mat_q_f32(
 
     float *dst_col = (float *)((char *)dst->data + (row_index * dst->nb[0]));
 
-    assert(src0->size[0] % 32 == 0);
-
     for (int64_t col_index = 0; col_index < src1->size[1]; ++col_index) {
       const int nb = src0->size[0] / QK;
-
-      assert(src0->size[0] % QK == 0);
-      assert(nb % 2 == 0);
 
       const block_q4_0 *restrict x = src0_row;
       const block_q4_0 *restrict y = (void *)&src1_col[col_index * row_size];
@@ -4681,12 +4676,9 @@ static void ggml_compute_forward_mul_mat_q_f32(
         const float d0 = x[i].d;
         const float d1 = y[i].d;
 
-        const uint8_t *restrict p0 = x[i].qs;
-        const uint8_t *restrict p1 = y[i].qs;
-
         for (int j = 0; j < QK / 2; j++) {
-          const uint8_t v0 = p0[j];
-          const uint8_t v1 = p1[j];
+          const uint8_t v0 = x[i].qs[j];
+          const uint8_t v1 = y[i].qs[j];
 
           const float f0 = d0 * ((int8_t)(v0 & 0xf) - 8);
           const float f1 = d0 * ((int8_t)(v0 >> 4) - 8);
