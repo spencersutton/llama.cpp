@@ -125,12 +125,11 @@ void ggml_compute_forward_mul_mat_q_f32(
        row_idx < MIN(start_row + num_rows_per_thread, num_rows); ++row_idx) {
     // src0 indices
 
-    device block_q4_0 *src0_row =
-        (device block_q4_0 *)((device char *)src0->data +
-                              (row_idx * src0->nb[1]));
-    device char *src1_col = (device char *)params->wdata;
+    auto src0_row = (device block_q4_0 *)((device char *)src0->data +
+                                          (row_idx * src0->nb[1]));
+    auto src1_col = (device char *)params->wdata;
 
-    device float *dst_col =
+    auto dst_col =
         (device float *)((device char *)dst->data + (row_idx * dst->nb[0]));
 
     for (int64_t col_idx = 0; col_idx < src1->size[1]; ++col_idx) {
