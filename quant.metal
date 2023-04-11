@@ -5,6 +5,7 @@
 
 #ifndef __METAL__
 #define kernel
+#define constant
 #define device
 typedef int int4[4];
 typedef long long4[4];
@@ -40,10 +41,10 @@ struct ggml_tensor {
   device char *data;
 };
 
-void ggml_compute_forward_mul_mat_q_f32(int ith, int nth, device char *wdata,
-                                        device const struct ggml_tensor *src0,
-                                        device const struct ggml_tensor *src1,
-                                        device struct ggml_tensor *dst) {
+kernel void mps_ggml_compute_forward_mul_mat_q_f32(
+    constant int *ith, constant int *nth, device char *wdata,
+    device const struct ggml_tensor *src0,
+    device const struct ggml_tensor *src1, device struct ggml_tensor *dst) {
 
   // parallelize by src0 rows using ggml_vec_dot_q
 
@@ -51,9 +52,9 @@ void ggml_compute_forward_mul_mat_q_f32(int ith, int nth, device char *wdata,
   const int num_rows = src0->size[1] * src0->size[2] * src0->size[3];
 
   // rows per thread
-  const int num_rows_per_thread = (num_rows + nth - 1) / nth;
+  const int num_rows_per_thread = (num_rows + *nth - 1) / *nth;
 
-  const int thread_id = ith;
+  const int thread_id = *ith;
 
   // row range for this thread
   const int start_row = num_rows_per_thread * thread_id;
