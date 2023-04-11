@@ -4728,8 +4728,39 @@ static void ggml_compute_forward_mul_mat_q_f32(
     assert(ne00 % 32 == 0);
 
     for (int64_t ic = 0; ic < ne11; ++ic) {
-      vec_dot_q(ne00, &dst_col[ic * ne0], src0_row,
-                (void *)(src1_col + ic * row_size));
+      const int nb = ne00 / QK;
+
+      assert(ne00 % QK == 0);
+      assert(nb % 2 == 0);
+
+      const block_q4_0 *restrict x = src0_row;
+      const block_q4_0 *restrict y = (void *)(src1_col + ic * row_size);
+
+      float sumf = 0.0;
+
+      // scalar
+      for (int i = 0; i < nb; i++) {
+        const float d0 = x[i].d;
+        const float d1 = y[i].d;
+
+        const uint8_t *restrict p0 = x[i].qs;
+        const uint8_t *restrict p1 = y[i].qs;
+
+        for (int j = 0; j < QK / 2; j++) {
+          const uint8_t v0 = p0[j];
+          const uint8_t v1 = p1[j];
+
+          const float f0 = d0 * ((int8_t)(v0 & 0xf) - 8);
+          const float f1 = d0 * ((int8_t)(v0 >> 4) - 8);
+
+          const float f2 = d1 * ((int8_t)(v1 & 0xf) - 8);
+          const float f3 = d1 * ((int8_t)(v1 >> 4) - 8);
+
+          sumf += f0 * f2 + f1 * f3;
+        }
+      }
+
+      dst_col[ic * ne0] = sumf;
     }
   }
 }
