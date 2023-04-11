@@ -41,7 +41,7 @@ struct ggml_tensor {
   device char *data;
 };
 
-kernel void mps_ggml_compute_forward_mul_mat_q_f32(
+kernel void ggml_compute_forward_mul_mat_q_f32(
     constant int *ith, constant int *nth, device char *wdata,
     device const struct ggml_tensor *src0,
     device const struct ggml_tensor *src1, device struct ggml_tensor *dst) {
