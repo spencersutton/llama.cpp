@@ -1,5 +1,7 @@
+#ifdef __METAL__
 #include <metal_atomic>
 #include <metal_stdlib>
+#endif
 
 #ifndef __METAL__
 #define kernel
@@ -76,7 +78,7 @@ struct ggml_compute_params {
   int nth;
 
   // work buffer for all threads
-  device void *wdata;
+  device char *wdata;
 };
 
 typedef struct {
