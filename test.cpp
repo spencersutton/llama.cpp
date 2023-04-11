@@ -1,3 +1,4 @@
+#include "ggml.h"
 #include <assert.h>
 #include <cassert>
 #include <cmath>
@@ -5,7 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "ggml.h"
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
@@ -158,133 +161,69 @@ typedef struct {
 static void ggml_compute_forward_mul_mat_q_f32(
     const struct ggml_compute_params *params, const struct ggml_tensor *src0,
     const struct ggml_tensor *src1, struct ggml_tensor *dst) {
-  const int64_t ne00 = src0->ne[0];
-  const int64_t ne01 = src0->ne[1];
-  const int64_t ne02 = src0->ne[2];
-  const int64_t ne03 = src0->ne[3];
-
-  const int64_t ne10 = src1->ne[0];
-  const int64_t ne11 = src1->ne[1];
-  const int64_t ne12 = src1->ne[2];
-  const int64_t ne13 = src1->ne[3];
-
-  const int64_t ne0 = dst->ne[0];
-  const int64_t ne1 = dst->ne[1];
-  const int64_t ne2 = dst->ne[2];
-  const int64_t ne3 = dst->ne[3];
-
-  const int nb00 = src0->nb[0];
-  const int nb01 = src0->nb[1];
-  const int nb02 = src0->nb[2];
-  const int nb03 = src0->nb[3];
-
-  const int nb10 = src1->nb[0];
-  const int nb11 = src1->nb[1];
-  const int nb12 = src1->nb[2];
-  const int nb13 = src1->nb[3];
-
-  const int nb0 = dst->nb[0];
-  const int nb1 = dst->nb[1];
-  const int nb2 = dst->nb[2];
-  const int nb3 = dst->nb[3];
-
-  const int ith = params->ith;
-  const int nth = params->nth;
-
-  GGML_ASSERT(ne02 == ne12);
-  GGML_ASSERT(ne03 == ne13);
-  GGML_ASSERT(ne2 == ne12);
-  GGML_ASSERT(ne3 == ne13);
 
   const enum ggml_type type = src0->type;
-  quantize_row_q_t const quantize_row_q = quantize_fns[type].quantize_row_q;
-  vec_dot_q_t const vec_dot_q = quantize_fns[type].vec_dot_q;
 
   // we don't support permuted src0 or src1
-  GGML_ASSERT(nb00 == (int)GGML_TYPE_SIZE[type]);
-  GGML_ASSERT(nb10 == sizeof(float));
 
   // dst cannot be transposed or permuted
-  GGML_ASSERT(nb0 == sizeof(float));
-  GGML_ASSERT(nb0 <= nb1);
-  GGML_ASSERT(nb1 <= nb2);
-  GGML_ASSERT(nb2 <= nb3);
-
-  GGML_ASSERT(ne0 == ne01);
-  GGML_ASSERT(ne1 == ne11);
-  GGML_ASSERT(ne2 == ne02);
-  GGML_ASSERT(ne3 == ne03);
 
   // nb01 >= nb00 - src0 is not transposed
   //   compute by src0 rows
 
-  if (params->type == GGML_TASK_INIT) {
-    char *wdata = params->wdata;
-    const size_t row_size = ne10 * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
-
-    for (int64_t i13 = 0; i13 < ne13; ++i13) {
-      for (int64_t i12 = 0; i12 < ne12; ++i12) {
-        for (int64_t i11 = 0; i11 < ne11; ++i11) {
-          quantize_row_q((float *)((char *)src1->data + i13 * nb13 +
-                                   i12 * nb12 + i11 * nb11),
-                         (void *)wdata, ne10);
-          wdata += row_size;
-        }
-      }
-    }
-
-    return;
-  }
-
-  if (params->type == GGML_TASK_FINALIZE) {
-    return;
-  }
-
   // parallelize by src0 rows using ggml_vec_dot_q
 
   // total rows in src0
-  const int nr = ne01 * ne02 * ne03;
+  const int num_rows = src0->size[1] * src0->size[2] * src0->size[3];
 
   // rows per thread
-  const int dr = (nr + nth - 1) / nth;
+  const int num_rows_per_thread = (num_rows + params->nth - 1) / params->nth;
+
+  const int thread_id = params->ith;
 
   // row range for this thread
-  const int ir0 = dr * ith;
-  const int ir1 = MIN(ir0 + dr, nr);
+  const int start_row = num_rows_per_thread * thread_id;
 
-  void *wdata = params->wdata;
-  const size_t row_size = ne00 * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
+  const size_t row_size = src0->size[0] * sizeof(block_q4_0) / QK;
 
-  for (int ir = ir0; ir < ir1; ++ir) {
+  for (int row_idx = start_row;
+       row_idx < MIN(start_row + num_rows_per_thread, num_rows); ++row_idx) {
     // src0 indices
-    const int i03 = ir / (ne02 * ne01);
-    const int i02 = (ir - i03 * ne02 * ne01) / ne01;
-    const int i01 = (ir - i03 * ne02 * ne01 - i02 * ne01);
 
-    const int i13 = i03;
-    const int i12 = i02;
+    block_q4_0 *src0_row =
+        (block_q4_0 *)((char *)src0->data + (row_idx * src0->nb[1]));
+    char *src1_col = (char *)params->wdata;
 
-    const int i0 = i01;
-    const int i2 = i02;
-    const int i3 = i03;
+    float *dst_col = (float *)((char *)dst->data + (row_idx * dst->nb[0]));
 
-    void *src0_row =
-        (void *)((char *)src0->data + (i01 * nb01 + i02 * nb02 + i03 * nb03));
-    char *src1_col =
-        ((char *)wdata + ((0 + i12 * ne11 + i13 * ne12 * ne11) * row_size));
+    for (int64_t col_idx = 0; col_idx < src1->size[1]; ++col_idx) {
+      const block_q4_0 *x = src0_row;
+      const block_q4_0 *y = (block_q4_0 *)&src1_col[col_idx * row_size];
 
-    float *dst_col = (float *)((char *)dst->data +
-                               (i0 * nb0 + 0 * nb1 + i2 * nb2 + i3 * nb3));
+      float sumf = 0.0;
 
-    assert(ne00 % 32 == 0);
+      for (int i = 0; i < src0->size[0] / QK; i++) {
+        const float d0 = x[i].d;
+        const float d1 = y[i].d;
 
-    for (int64_t ic = 0; ic < ne11; ++ic) {
-      vec_dot_q(ne00, &dst_col[ic * ne0], src0_row,
-                (void *)(src1_col + ic * row_size));
+        for (int j = 0; j < QK / 2; j++) {
+          const uint8_t v0 = x[i].qs[j];
+          const uint8_t v1 = y[i].qs[j];
+
+          const float f0 = d0 * ((int8_t)(v0 & 0xf) - 8);
+          const float f1 = d0 * ((int8_t)(v0 >> 4) - 8);
+
+          const float f2 = d1 * ((int8_t)(v1 & 0xf) - 8);
+          const float f3 = d1 * ((int8_t)(v1 >> 4) - 8);
+
+          sumf += f0 * f2 + f1 * f3;
+        }
+      }
+
+      dst_col[col_idx * dst->size[0]] = sumf;
     }
   }
 }
-
 
 static MTL::Function *addFunc = nullptr;
 static MTL::Device *device = nullptr;
