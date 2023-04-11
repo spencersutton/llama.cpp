@@ -4667,14 +4667,14 @@ static void ggml_compute_forward_mul_mat_q_f32(
 
     assert(src0->size[0] % 32 == 0);
 
-    for (int64_t ic = 0; ic < src1->size[1]; ++ic) {
+    for (int64_t col_index = 0; col_index < src1->size[1]; ++col_index) {
       const int nb = src0->size[0] / QK;
 
       assert(src0->size[0] % QK == 0);
       assert(nb % 2 == 0);
 
       const block_q4_0 *restrict x = src0_row;
-      const block_q4_0 *restrict y = (void *)(src1_col + ic * row_size);
+      const block_q4_0 *restrict y = (void *)(src1_col + col_index * row_size);
 
       float sumf = 0.0;
 
@@ -4700,7 +4700,7 @@ static void ggml_compute_forward_mul_mat_q_f32(
         }
       }
 
-      dst_col[ic * dst->size[0]] = sumf;
+      dst_col[col_index * dst->size[0]] = sumf;
     }
   }
 }
