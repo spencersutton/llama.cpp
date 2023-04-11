@@ -79,8 +79,6 @@ static void ggml_compute_forward_mul_mat_q_f32(
       const block_q4_0 *restrict y =
           (void *)(src1_col + column_index * row_size);
 
-      float sumf = 0.0;
-
       // scalar
       for (int i = 0; i < nb; i++) {
         const float d0 = x[i].d;
@@ -99,11 +97,9 @@ static void ggml_compute_forward_mul_mat_q_f32(
           const float f2 = d1 * ((int8_t)(v1 & 0xf) - 8);
           const float f3 = d1 * ((int8_t)(v1 >> 4) - 8);
 
-          sumf += f0 * f2 + f1 * f3;
+          dst_col[column_index * dst->size[0]] += f0 * f2 + f1 * f3;
         }
       }
-
-      dst_col[column_index * dst->size[0]] = sumf;
     }
   }
 }
