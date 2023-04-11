@@ -72,7 +72,7 @@ typedef double ggml_float;
 // on Arm, we use __fp16
 // on x86, we use uint16_t
 
-#include <immintrin.h>
+// #include <immintrin.h>
 
 // FP16 <-> FP32
 // ref: https://github.com/Maratyszcza/FP16
@@ -1330,7 +1330,7 @@ struct ggml_tensor *ggml_new_tensor_impl(struct ggml_context *ctx,
       /*.perf_cycles  =*/0,
       /*.perf_time_us =*/0,
       /*.data         =*/
-          (data == NULL && !ctx->no_alloc) ? (void *)(result + 1) : data,
+      (data == NULL && !ctx->no_alloc) ? (void *)(result + 1) : data,
       /*.pad          =*/{0},
   };
 
@@ -4732,20 +4732,6 @@ static void ggml_compute_forward_mul_mat_q_f32(
                 (void *)(src1_col + ic * row_size));
     }
   }
-
-  // int64_t t1 = ggml_time_us();
-  // static int64_t acc = 0;
-  // acc += t1 - t0;
-  // if (t1 - t0 > 10) {
-  //     printf("\n");
-  //     printf("ne00 = %5d, ne01 = %5d, ne02 = %5d, ne03 = %5d\n", ne00, ne01,
-  //     ne02, ne03); printf("nb00 = %5d, nb01 = %5d, nb02 = %5d, nb03 = %5d\n",
-  //     nb00, nb01, nb02, nb03); printf("ne10 = %5d, ne11 = %5d, ne12 = %5d,
-  //     ne13 = %5d\n", ne10, ne11, ne12, ne13);
-
-  //    printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX task %d/%d:
-  //    %d us, acc = %d\n", ith, nth, (int) (t1 - t0), (int) acc);
-  //}
 }
 
 static void ggml_compute_forward_mul_mat(
