@@ -53,6 +53,8 @@ static void ggml_compute_forward_mul_mat_q_f32(
     const int index1 = (row_index - index3 * src0->size[2] * src0->size[1] -
                         index2 * src0->size[1]);
 
+    printf("row_index=%d, index1=%d, index2=%d, index3=%d\n", row_index, index1,
+           index2, index3);
     block_q4_0 *src0_row =
         (block_q4_0 *)((char *)src0->data +
                        (index1 * src0->nb[1] + index2 * src0->nb[2] +
