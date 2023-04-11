@@ -75,16 +75,15 @@ static void ggml_compute_forward_mul_mat_q_f32(
       assert(src0->size[0] % QK == 0);
       assert(nb % 2 == 0);
 
-      const block_q4_0 *restrict x = src0_row;
       const block_q4_0 *restrict y =
           (void *)(src1_col + column_index * row_size);
 
       // scalar
       for (int i = 0; i < nb; i++) {
-        const float d0 = x[i].d;
+        const float d0 = src0_row[i].d;
         const float d1 = y[i].d;
 
-        const uint8_t *restrict p0 = x[i].qs;
+        const uint8_t *restrict p0 = src0_row[i].qs;
         const uint8_t *restrict p1 = y[i].qs;
 
         for (int j = 0; j < QK / 2; j++) {
