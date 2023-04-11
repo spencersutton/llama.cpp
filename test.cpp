@@ -30,13 +30,13 @@ static MTL::CommandQueue *commandQueue = nullptr;
 static MTL::Buffer *bufferA = nullptr;
 static MTL::Buffer *bufferB = nullptr;
 
-static void test_ggml_vec_dot_q4_0(const int n, float *s, const void *vx,
-                                   const void *vy) {
-  const int nb = n / QK;
+static void ggml_compute_forward_mul_mat_q_f32(
+    const struct ggml_compute_params *params, const struct ggml_tensor *src0,
+    const struct ggml_tensor *src1, struct ggml_tensor *dst) {
 
-  auto bufferA = device->newBuffer(vx, sizeof(block_q4_0) * nb,
+  auto bufferA = device->newBuffer(src0, sizeof(block_q4_0) * nb,
                                    MTL::ResourceStorageModeShared);
-  auto bufferB = device->newBuffer(vy, sizeof(block_q4_0) * nb,
+  auto bufferB = device->newBuffer(src1, sizeof(block_q4_0) * nb,
                                    MTL::ResourceStorageModeShared);
 
   auto bufferResult =
@@ -82,10 +82,8 @@ int main(int argc, const char *argv[]) {
   auto deviceArray = MTL::CopyAllDevices();
   device = deviceArray->object<MTL::Device>(0);
 
-  auto path =
-      NS::String::string("/Users/spencer/ai/repos/llama.cpp/quant.metallib",
-                         NS::UTF8StringEncoding);
-  auto library = device->newLibrary((path), &error);
+  auto path = NS::String::string("quant.metallib", NS::UTF8StringEncoding);
+  auto library = device->newLibrary(path, &error);
   if (!library) {
     printf("%s", error->localizedDescription()->utf8String());
     assert(false);
@@ -121,7 +119,7 @@ int main(int argc, const char *argv[]) {
 
   for (int i = 0; i < runs; i++) {
     float s = 0;
-    test_ggml_vec_dot_q4_0(64, &s, x, y);
+    ggml_compute_forward_mul_mat_q_f32(64, &s, x, y);
     assert(s != 0);
 
     if (i % 100 == 0) {
