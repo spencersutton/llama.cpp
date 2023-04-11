@@ -6,6 +6,7 @@
 #ifndef __METAL__
 #define kernel
 #define device
+typedef int int4[4];
 typedef long long4[4];
 typedef unsigned long ulong;
 #define extract_bits(x, offset, count)                                         \
@@ -33,26 +34,16 @@ typedef struct {
 
 // n-dimensional tensor
 struct ggml_tensor {
+  int4 size;
+  int4 num_bytes;
 
-  int64_t size[4];     // number of elements
-  size_t num_bytes[4]; // stride in bytes:
-                       // nb[0] = sizeof(type)
-                       // nb[1] = nb[0]   * ne[0] + padding
-                       // nb[i] = nb[i-1] * ne[i-1]
-
-  // compute data
-
-  device struct ggml_tensor *src0;
-  device struct ggml_tensor *src1;
-
-  device void *data;
+  device char *data;
 };
 
-void ggml_compute_forward_mul_mat_q_f32(
-    int ith, int nth,
-    device char *wdata, // work buffer for all threads
-    device const struct ggml_tensor *src0,
-    device const struct ggml_tensor *src1, device struct ggml_tensor *dst) {
+void ggml_compute_forward_mul_mat_q_f32(int ith, int nth, device char *wdata,
+                                        device const struct ggml_tensor *src0,
+                                        device const struct ggml_tensor *src1,
+                                        device struct ggml_tensor *dst) {
 
   // parallelize by src0 rows using ggml_vec_dot_q
 
@@ -73,12 +64,11 @@ void ggml_compute_forward_mul_mat_q_f32(
        row_idx < MIN(start_row + num_rows_per_thread, num_rows); ++row_idx) {
     // src0 indices
 
-    auto src0_row = (device block_q4_0 *)((device char *)src0->data +
-                                          (row_idx * src0->num_bytes[1]));
+    auto src0_row =
+        (device block_q4_0 *)(src0->data + (row_idx * src0->num_bytes[1]));
     auto src1_col = wdata;
 
-    auto dst_col = (device float *)((device char *)dst->data +
-                                    (row_idx * dst->num_bytes[0]));
+    auto dst_col = (device float *)(dst->data + (row_idx * dst->num_bytes[0]));
 
     for (int64_t col_idx = 0; col_idx < src1->size[1]; ++col_idx) {
       const auto x = (device block_q4_0 *)src0_row;
