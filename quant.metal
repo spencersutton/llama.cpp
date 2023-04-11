@@ -22,33 +22,23 @@ typedef unsigned long ulong;
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-struct ggml_compute_params {
-  int ith;
-  int nth;
-
-  // work buffer for all threads
-  device char *wdata;
-};
-
 typedef struct {
   float d;        // delta
   uint8_t qs[16]; // nibbles / quants
-} block_q4_0;
+} mps_block;
 
 // n-dimensional tensor
-struct ggml_tensor {
+struct mps_tensor {
   int4 size;
   int4 num_bytes;
 
-  device char *data;
+  device void *data;
 };
 
-kernel void ggml_compute_forward_mul_mat_q_f32(
+kernel void mps_ggml_compute_forward_mul_mat_q_f32(
     constant int *ith, constant int *nth, device char *wdata,
-    device const struct ggml_tensor *src0,
-    device const struct ggml_tensor *src1, device struct ggml_tensor *dst) {
-
-  // parallelize by src0 rows using ggml_vec_dot_q
+    device const struct mps_tensor *src0, device const struct mps_tensor *src1,
+    device struct mps_tensor *dst) {
 
   // total rows in src0
   const int num_rows = src0->size[1] * src0->size[2] * src0->size[3];
@@ -61,21 +51,21 @@ kernel void ggml_compute_forward_mul_mat_q_f32(
   // row range for this thread
   const int start_row = num_rows_per_thread * thread_id;
 
-  const size_t row_size = src0->size[0] * sizeof(block_q4_0) / 32;
+  const size_t row_size = src0->size[0] * sizeof(mps_block) / 32;
 
   for (int row_idx = start_row;
        row_idx < MIN(start_row + num_rows_per_thread, num_rows); ++row_idx) {
     // src0 indices
 
     auto src0_row =
-        (device block_q4_0 *)(src0->data + (row_idx * src0->num_bytes[1]));
+        (device mps_block *)(src0->data + (row_idx * src0->num_bytes[1]));
     auto src1_col = wdata;
 
     auto dst_col = (device float *)(dst->data + (row_idx * dst->num_bytes[0]));
 
     for (int64_t col_idx = 0; col_idx < src1->size[1]; ++col_idx) {
-      const auto x = (device block_q4_0 *)src0_row;
-      const auto y = (device block_q4_0 *)&src1_col[col_idx * row_size];
+      const auto x = (device mps_block *)src0_row;
+      const auto y = (device mps_block *)&src1_col[col_idx * row_size];
 
       float sumf = 0.0;
 
