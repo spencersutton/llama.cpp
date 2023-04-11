@@ -72,9 +72,6 @@ static void ggml_compute_forward_mul_mat_q_f32(
          ++column_index) {
       const int nb = src0->size[0] / QK;
 
-      assert(src0->size[0] % QK == 0);
-      assert(nb % 2 == 0);
-
       const block_q4_0 *restrict y =
           (void *)(src1_col + column_index * row_size);
 
