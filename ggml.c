@@ -4643,17 +4643,22 @@ static void ggml_compute_forward_mul_mat_q_f32(
   // rows per thread
   const int num_rows_per_thread = (num_rows + params->nth - 1) / params->nth;
 
+  const int thread_id = params->ith;
+
   // row range for this thread
-  const int ir0 = num_rows_per_thread * params->ith;
+  const int start_row = num_rows_per_thread * thread_id;
 
   const size_t row_size =
       src0->ne[0] * GGML_TYPE_SIZE[type] / GGML_BLCK_SIZE[type];
 
-  for (int ir = ir0; ir < MIN(ir0 + num_rows_per_thread, num_rows); ++ir) {
+  for (int row_index = start_row;
+       row_index < MIN(start_row + num_rows_per_thread, num_rows);
+       ++row_index) {
     // src0 indices
-    const int i03 = ir / (src0->ne[2] * src0->ne[1]);
-    const int i02 = (ir - i03 * src0->ne[2] * src0->ne[1]) / src0->ne[1];
-    const int i01 = (ir - i03 * src0->ne[2] * src0->ne[1] - i02 * src0->ne[1]);
+    const int i03 = row_index / (src0->ne[2] * src0->ne[1]);
+    const int i02 = (row_index - i03 * src0->ne[2] * src0->ne[1]) / src0->ne[1];
+    const int i01 =
+        (row_index - i03 * src0->ne[2] * src0->ne[1] - i02 * src0->ne[1]);
 
     block_q4_0 *src0_row =
         (block_q4_0 *)((char *)src0->data +
