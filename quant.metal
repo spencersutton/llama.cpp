@@ -11,9 +11,14 @@ typedef unsigned long ulong;
 #include <stdint.h>
 #include <stdlib.h>
 #endif
+
 #define GGML_MAX_DIMS 4
-using namespace metal;
 #define GGML_MAX_OPT 4
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define QK 32
+
+using namespace metal;
+
 // available tensor operations:
 enum ggml_op {
   GGML_OP_NONE = 0,
@@ -60,9 +65,6 @@ enum ggml_op {
   GGML_OP_COUNT,
 };
 
-#define QK 32
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
 enum ggml_task_type {
   GGML_TASK_INIT = 0,
   GGML_TASK_COMPUTE,
@@ -78,6 +80,7 @@ struct ggml_compute_params {
   size_t wsize;
   device void *wdata;
 };
+
 typedef struct {
   float d;            // delta
   uint8_t qs[QK / 2]; // nibbles / quants
