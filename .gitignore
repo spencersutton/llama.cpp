@@ -57,3 +57,4 @@ perf-*.txt
 
 examples/jeopardy/results.txt
 test
+*.metallib

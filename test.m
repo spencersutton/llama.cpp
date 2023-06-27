@@ -8,11 +8,10 @@ int main(int argc, const char *argv[]) {
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
 
     NSError *error = nil;
-    NSURL *url = [NSURL fileURLWithPath:@"test.metal"];
 
+    NSURL *url = [NSURL fileURLWithPath:@"default.metallib"];
     printf("loading library from %s\n", [[url absoluteString] UTF8String]);
-    // NSBundle *bundle = [NSBundle mainBundle];
-    id<MTLLibrary> library = [device newLibraryWithFile:@"default.metallib" error:&error];
+    id<MTLLibrary> library = [device newLibraryWithURL:url error:&error];
     if (library == nil || error != nil) {
       fprintf(stderr, "%s:%d: error: %s\n", __FILE__, __LINE__, [[error description] UTF8String]);
       exit(1);
