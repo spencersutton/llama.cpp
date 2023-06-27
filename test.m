@@ -3,6 +3,12 @@
 #import <Metal/Metal.h>
 #import <MetalPerformanceShaders/MetalPerformanceShaders.h>
 
+#define CHECK_ERROR(ptr)                                                                         \
+  if (!(ptr) || error) {                                                                         \
+    fprintf(stderr, "%s:%d: error: %s\n", __FILE__, __LINE__, [[error description] UTF8String]); \
+    exit(1);                                                                                     \
+  }
+
 int main(int argc, const char *argv[]) {
   @autoreleasepool {
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
@@ -12,23 +18,14 @@ int main(int argc, const char *argv[]) {
     NSURL *url = [NSURL fileURLWithPath:@"default.metallib"];
     printf("loading library from %s\n", [[url absoluteString] UTF8String]);
     id<MTLLibrary> library = [device newLibraryWithURL:url error:&error];
-    if (library == nil || error != nil) {
-      fprintf(stderr, "%s:%d: error: %s\n", __FILE__, __LINE__, [[error description] UTF8String]);
-      exit(1);
-    }
+    CHECK_ERROR(library);
 
     id<MTLFunction> function = [library newFunctionWithName:@"add_arrays"];
-    if (function == nil) {
-      fprintf(stderr, "%s:%d: error: function not found\n", __FILE__, __LINE__);
-      exit(1);
-    }
+    CHECK_ERROR(function);
 
     id<MTLComputePipelineState> pipeline = [device newComputePipelineStateWithFunction:function
                                                                                  error:&error];
-    if (pipeline == nil || error != nil) {
-      fprintf(stderr, "%s:%d: error: %s\n", __FILE__, __LINE__, [[error description] UTF8String]);
-      exit(1);
-    }
+    CHECK_ERROR(pipeline)
 
     id<MTLCommandQueue> queue = [device newCommandQueue];
 
