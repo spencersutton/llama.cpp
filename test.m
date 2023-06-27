@@ -10,34 +10,33 @@
   }
 
 int main(int argc, const char *argv[]) {
-  @autoreleasepool {
-    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+  id<MTLDevice> device = MTLCreateSystemDefaultDevice();
 
-    NSError *error = nil;
+  NSError *error = nil;
 
-    NSURL *url = [NSURL fileURLWithPath:@"default.metallib"];
-    printf("loading library from %s\n", [[url absoluteString] UTF8String]);
-    id<MTLLibrary> library = [device newLibraryWithURL:url error:&error];
-    CHECK_ERROR(library);
+  NSURL *url = [NSURL fileURLWithPath:@"default.metallib"];
+  printf("loading library from %s\n", [[url absoluteString] UTF8String]);
+  id<MTLLibrary> library = [device newLibraryWithURL:url error:&error];
+  CHECK_ERROR(library);
 
-    id<MTLFunction> function = [library newFunctionWithName:@"add_arrays"];
-    CHECK_ERROR(function);
+  id<MTLFunction> function = [library newFunctionWithName:@"add_arrays"];
+  CHECK_ERROR(function);
 
-    id<MTLComputePipelineState> pipeline = [device newComputePipelineStateWithFunction:function
-                                                                                 error:&error];
-    CHECK_ERROR(pipeline)
+  id<MTLComputePipelineState> pipeline = [device newComputePipelineStateWithFunction:function
+                                                                               error:&error];
+  CHECK_ERROR(pipeline)
 
-    id<MTLCommandQueue> queue = [device newCommandQueue];
+  id<MTLCommandQueue> queue = [device newCommandQueue];
 
-    id<MTLCommandBuffer> command_buffer = [queue commandBuffer];
-    id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
+  id<MTLCommandBuffer> command_buffer = [queue commandBuffer];
+  id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
 
-    {};
+  {};
 
-    [encoder endEncoding];
-    [command_buffer commit];
-    [command_buffer waitUntilCompleted];
-    printf("done\n");
-  };
+  [encoder endEncoding];
+  [command_buffer commit];
+  [command_buffer waitUntilCompleted];
+
+  printf("done\n");
   return 0;
 }
