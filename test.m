@@ -1,18 +1,7 @@
-/*
-See LICENSE folder for this sample’s licensing information.
-
-Abstract:
-An app that performs a simple calculation on a GPU.
-*/
-
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #include <assert.h>
 
-// #import "MetalAdder.h"
-
-// This is the C version of the function that the sample
-// implements in Metal Shading Language.
 void add_arrays(const float* inA, const float* inB, float* result, int length) {
   for (int index = 0; index < length; index++) {
     result[index] = inA[index] + inB[index];
@@ -23,7 +12,7 @@ void add_arrays(const float* inA, const float* inB, float* result, int length) {
 const unsigned int arrayLength = 16;
 const unsigned int bufferSize = arrayLength * sizeof(float);
 
-int main(int argc, const char* argv[]) {
+int main(void) {
   @autoreleasepool {
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
 
