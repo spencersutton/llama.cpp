@@ -65,39 +65,43 @@ int main(void) {
     dataPtr[index] = (float)rand() / (float)(RAND_MAX);
   }
 
-  id<MTLCommandBuffer> commandBuffer;
   {
-    MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
-    descriptor.errorOptions = MTLCommandBufferErrorOptionNone;
-    descriptor.retainedReferences = NO;
-    commandBuffer = [commandQueue commandBufferWithDescriptor:descriptor];
-    assert(commandBuffer);
+    id<MTLCommandBuffer> commandBuffer;
+    {
+      MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
+      descriptor.errorOptions = MTLCommandBufferErrorOptionNone;
+      descriptor.retainedReferences = NO;
+      commandBuffer = [commandQueue commandBufferWithDescriptor:descriptor];
+      assert(commandBuffer);
+    }
+
+    // Start a compute pass.
+    {
+      id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
+      assert(computeEncoder);
+
+      // Encode the pipeline state object and its parameters.
+      [computeEncoder setComputePipelineState:pipeline];
+      [computeEncoder setBuffer:bufferA offset:0 atIndex:0];
+      [computeEncoder setBuffer:bufferB offset:0 atIndex:1];
+      [computeEncoder setBuffer:bufferResult offset:0 atIndex:2];
+
+      // Encode the compute command.
+      [computeEncoder dispatchThreads:MTLSizeMake(arrayLength, 1, 1)
+                threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+
+      // End the compute pass.
+      [computeEncoder endEncoding];
+    }
+
+    // Execute the command.
+    [commandBuffer commit];
+
+    // Normally, you want to do other work in your app while the GPU is running,
+    // but in this example, the code simply blocks until the calculation is
+    // complete.
+    [commandBuffer waitUntilCompleted];
   }
-
-  // Start a compute pass.
-  id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
-  assert(computeEncoder);
-
-  // Encode the pipeline state object and its parameters.
-  [computeEncoder setComputePipelineState:pipeline];
-  [computeEncoder setBuffer:bufferA offset:0 atIndex:0];
-  [computeEncoder setBuffer:bufferB offset:0 atIndex:1];
-  [computeEncoder setBuffer:bufferResult offset:0 atIndex:2];
-
-  // Encode the compute command.
-  [computeEncoder dispatchThreads:MTLSizeMake(arrayLength, 1, 1)
-            threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
-
-  // End the compute pass.
-  [computeEncoder endEncoding];
-
-  // Execute the command.
-  [commandBuffer commit];
-
-  // Normally, you want to do other work in your app while the GPU is running,
-  // but in this example, the code simply blocks until the calculation is
-  // complete.
-  [commandBuffer waitUntilCompleted];
 
   float* a = bufferA.contents;
   float* b = bufferB.contents;
