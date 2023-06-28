@@ -51,8 +51,7 @@ int main(int argc, const char *argv[]) {
     [encoder setBuffer:y offset:0 atIndex:1];
     [encoder setBuffer:z offset:0 atIndex:2];
     [encoder setComputePipelineState:pipeline];
-    [encoder dispatchThreadgroups:MTLSizeMake(1, 1, 1)
-            threadsPerThreadgroup:MTLSizeMake(len, 1, 1)];
+    [encoder dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
   };
 
   [encoder endEncoding];
