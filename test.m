@@ -65,10 +65,14 @@ int main(void) {
     dataPtr[index] = (float)rand() / (float)(RAND_MAX);
   }
 
-  // Send a command to the GPU to perform the calculation.
-  // Create a command buffer to hold commands.
-  id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
-  assert(commandBuffer);
+  id<MTLCommandBuffer> commandBuffer;
+  {
+    MTLCommandBufferDescriptor* descriptor = [MTLCommandBufferDescriptor new];
+    descriptor.errorOptions = MTLCommandBufferErrorOptionNone;
+    descriptor.retainedReferences = NO;
+    commandBuffer = [commandQueue commandBufferWithDescriptor:descriptor];
+    assert(commandBuffer);
+  }
 
   // Start a compute pass.
   id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
