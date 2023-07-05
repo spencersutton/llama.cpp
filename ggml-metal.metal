@@ -1519,10 +1519,10 @@ kernel void kernel_mul_mat_q4_K_f32(
         const float dmin = (float)((x + i)->dmin);
 
         device const packed_uchar2 * a = (device const packed_uchar2 *)(x + i)->scales;
-        sc1 = ((a[im+0] & kmask1));
-        sc2 = ((a[im+2] & kmask1));
-        sc3 = ((((a[im+4] >> 0) & kmask2) | ((a[im+0] & kmask3) >> 2)));
-        sc4 = ((((a[im+4] >> 4) & kmask2) | ((a[im+2] & kmask3) >> 2)));
+        sc1 = a[im+0] & kmask1;
+        sc2 = a[im+2] & kmask1;
+        sc3 = ((a[im+4] >> 0) & kmask2) | ((a[im+0] & kmask3) >> 2);
+        sc4 = ((a[im+4] >> 4) & kmask2) | ((a[im+2] & kmask3) >> 2);
 
         float4 s = {0.f, 0.f, 0.f, 0.f};
         float smin = 0;
