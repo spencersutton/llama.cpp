@@ -1506,8 +1506,6 @@ kernel void kernel_mul_mat_q4_K_f32(
     const int q_offset = 32*im + l0;
     const int y_offset = 64*im + l0;
 
-    uchar2 sc1, sc2, sc3, sc4;
-
     for (int i = tpitg.x; i < nb; i += tptg.x) {
 
         device const uint8_t * q1 = x[i].qs + q_offset;
@@ -1519,10 +1517,10 @@ kernel void kernel_mul_mat_q4_K_f32(
         const half dmin = x[i].dmin;
 
         device const packed_uchar2 * a = (device const packed_uchar2 *)x[i].scales + im;
-        sc1 = a[0] & kmask1;
-        sc2 = a[2] & kmask1;
-        sc3 = ((a[4] >> 0) & kmask2) | ((a[0] & kmask3) >> 2);
-        sc4 = ((a[4] >> 4) & kmask2) | ((a[2] & kmask3) >> 2);
+        const uchar2 sc1 = a[0] & kmask1;
+        const uchar2 sc2 = a[2] & kmask1;
+        const uchar2 sc3 = ((a[4] >> 0) & kmask2) | ((a[0] & kmask3) >> 2);
+        const uchar2 sc4 = ((a[4] >> 4) & kmask2) | ((a[2] & kmask3) >> 2);
 
         float4 s = {0.f, 0.f, 0.f, 0.f};
         float smin = 0;
