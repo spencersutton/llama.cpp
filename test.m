@@ -9,7 +9,7 @@ void add_arrays(const float* inA, const float* inB, float* result, int length) {
 }
 
 // The number of floats in each array, and the size of the arrays in bytes.
-const unsigned int len = 16;
+const unsigned int len = 32;
 const unsigned int size = len * sizeof(float);
 
 int main(void) {
@@ -59,7 +59,7 @@ int main(void) {
     float* ptr = bufferA.contents;
     ptr[i] = (float)i;
     ptr = bufferB.contents;
-    ptr[i] = (float)i;
+    ptr[i] = (float)1;
   }
 
   {
@@ -85,7 +85,7 @@ int main(void) {
 
       // Encode the compute command.
       [computeEncoder dispatchThreads:MTLSizeMake(len, 1, 1)
-                threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+                threadsPerThreadgroup:MTLSizeMake(len, 1, 1)];
 
       // End the compute pass.
       [computeEncoder endEncoding];
@@ -101,10 +101,12 @@ int main(void) {
   }
 
   float* result = bufResult.contents;
-
+  float sum = 0;
   for (uint i = 0; i < len; i++) {
+    sum += i;
     printf("result[%u] = %g\n", i, result[i]);
   }
+  printf("sum = %g\n", sum);
 
   return 0;
 }
