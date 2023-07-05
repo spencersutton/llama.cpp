@@ -57,9 +57,9 @@ int main(void) {
 
   for (uint i = 0; i < len; i++) {
     float* ptr = bufferA.contents;
-    ptr[i] = (float)rand() / (float)(RAND_MAX);
+    ptr[i] = (float)i;
     ptr = bufferB.contents;
-    ptr[i] = (float)rand() / (float)(RAND_MAX);
+    ptr[i] = (float)i;
   }
 
   {
