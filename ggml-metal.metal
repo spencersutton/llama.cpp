@@ -1510,15 +1510,15 @@ kernel void kernel_mul_mat_q4_K_f32(
 
     for (int i = tpitg.x; i < nb; i += tptg.x) {
 
-        device const uint8_t * q1 = (x + i)->qs + q_offset;
+        device const uint8_t * q1 = x[i].qs + q_offset;
         device const uint8_t * q2 = q1 + 64;
         device const float   * y1 = yy + i*QK_K + y_offset;
         device const float   * y2 = y1 + 128;
 
-        const half dall = (x + i)->d;
-        const half dmin = (x + i)->dmin;
+        const half dall = x[i].d;
+        const half dmin = x[i].dmin;
 
-        device const packed_uchar2 * a = (device const packed_uchar2 *)(x + i)->scales;
+        device const packed_uchar2 * a = (device const packed_uchar2 *)x[i].scales;
         sc1 = a[im+0] & kmask1;
         sc2 = a[im+2] & kmask1;
         sc3 = ((a[im+4] >> 0) & kmask2) | ((a[im+0] & kmask3) >> 2);
@@ -1648,16 +1648,16 @@ kernel void kernel_mul_mat_q5_K_f32(
 
     for (int i = tpitg.x; i < nb; i += tptg.x) {
 
-        device const uint8_t * q1 = (x + i)->qs + q_offset;
+        device const uint8_t * q1 = x[i].qs + q_offset;
         device const uint8_t * q2 = q1 + 64;
-        device const uint8_t * qh = (x + i)->qh + l0;
+        device const uint8_t * qh = x[i].qh + l0;
         device const float   * y1 = yy + i*QK_K + y_offset;
         device const float   * y2 = y1 + 128;
 
-        const float dall = (float)((x + i)->d);
-        const float dmin = (float)((x + i)->dmin);
+        const float dall = (float)(x[i].d);
+        const float dmin = (float)(x[i].dmin);
 
-        device const uint16_t * a = (device const uint16_t *)(x + i)->scales;
+        device const uint16_t * a = (device const uint16_t *)x[i].scales;
         sc1 = as_type<uchar2>((uint16_t)(a[im+0] & kmask1));
         sc2 = as_type<uchar2>((uint16_t)(a[im+2] & kmask1));
         sc3 = as_type<uchar2>((uint16_t)(((a[im+4] >> 0) & kmask2) | ((a[im+0] & kmask3) >> 2)));
