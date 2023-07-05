@@ -1530,7 +1530,8 @@ kernel void kernel_mul_mat_q4_K_f32(
             s[2] += y2[l] * (q2[l] & 0xF);
             s[1] += y1[l+32] * (q1[l] >> 4);
             s[3] += y2[l+32] * (q2[l] >> 4);
-            smin += y1[l] * sc2[0] + y1[l+32] * sc2[1] + y2[l] * sc4[0] + y2[l+32] * sc4[1];
+            smin += dot(float2(y1[l], y1[l+32]), sc2);
+            smin += dot(float2(y2[l], y2[l+32]), sc4);
 
         }
         sumf += dall * dot(s, float4(sc1, sc3)) - dmin * smin;
