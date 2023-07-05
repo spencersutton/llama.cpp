@@ -9,7 +9,7 @@ void add_arrays(const float* inA, const float* inB, float* result, int length) {
 }
 
 // The number of floats in each array, and the size of the arrays in bytes.
-const unsigned int len = 32;
+const unsigned int len = 64;
 const unsigned int size = len * sizeof(float);
 
 int main(void) {
@@ -52,14 +52,11 @@ int main(void) {
   // Create buffers to hold data
   // Allocate three buffers to hold our initial data and the result.
   id<MTLBuffer> bufferA = [device newBufferWithLength:size options:MTLResourceStorageModeShared];
-  id<MTLBuffer> bufferB = [device newBufferWithLength:size options:MTLResourceStorageModeShared];
   id<MTLBuffer> bufResult = [device newBufferWithLength:size options:MTLResourceStorageModeShared];
 
   for (uint i = 0; i < len; i++) {
     float* ptr = bufferA.contents;
     ptr[i] = (float)i;
-    ptr = bufferB.contents;
-    ptr[i] = (float)1;
   }
 
   {
@@ -80,12 +77,12 @@ int main(void) {
       // Encode the pipeline state object and its parameters.
       [computeEncoder setComputePipelineState:pipeline];
       [computeEncoder setBuffer:bufferA offset:0 atIndex:0];
-      [computeEncoder setBuffer:bufferB offset:0 atIndex:1];
-      [computeEncoder setBuffer:bufResult offset:0 atIndex:2];
+      [computeEncoder setBuffer:bufResult offset:0 atIndex:1];
 
       // Encode the compute command.
-      [computeEncoder dispatchThreads:MTLSizeMake(len, 1, 1)
-                threadsPerThreadgroup:MTLSizeMake(len, 1, 1)];
+      [computeEncoder setThreadgroupMemoryLength:2 * sizeof(float) atIndex:0];
+      [computeEncoder dispatchThreadgroups:MTLSizeMake(2, 1, 1)
+                     threadsPerThreadgroup:MTLSizeMake(len, 1, 1)];
 
       // End the compute pass.
       [computeEncoder endEncoding];
@@ -104,6 +101,9 @@ int main(void) {
   float sum = 0;
   for (uint i = 0; i < len; i++) {
     sum += i;
+  }
+
+  for (uint i = 0; i < 2; i++) {
     printf("result[%u] = %g\n", i, result[i]);
   }
   printf("sum = %g\n", sum);
