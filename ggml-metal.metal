@@ -1515,8 +1515,8 @@ kernel void kernel_mul_mat_q4_K_f32(
         device const float   * y1 = yy + i*QK_K + y_offset;
         device const float   * y2 = y1 + 128;
 
-        const float dall = (float)((x + i)->d);
-        const float dmin = (float)((x + i)->dmin);
+        const half dall = (x + i)->d;
+        const half dmin = (x + i)->dmin;
 
         device const packed_uchar2 * a = (device const packed_uchar2 *)(x + i)->scales;
         sc1 = a[im+0] & kmask1;
