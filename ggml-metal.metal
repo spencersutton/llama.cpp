@@ -1517,21 +1517,23 @@ kernel void kernel_mul_mat_q4_K_f32(
         const half dmin = x[i].dmin;
 
         device const packed_uchar2 * a = (device const packed_uchar2 *)x[i].scales + im;
-        const uchar2 sc1 = a[0] & kmask1;
-        const uchar2 sc2 = a[2] & kmask1;
-        const uchar2 sc3 = ((a[4] >> 0) & kmask2) | ((a[0] & kmask3) >> 2);
-        const uchar2 sc4 = ((a[4] >> 4) & kmask2) | ((a[2] & kmask3) >> 2);
+        const float2 sc1 = static_cast<float2>(a[0] & kmask1);
+        const float2 sc2 = static_cast<float2>(a[2] & kmask1);
+        const float2 sc3 = static_cast<float2>(((a[4] >> 0) & kmask2) | ((a[0] & kmask3) >> 2));
+        const float2 sc4 = static_cast<float2>(((a[4] >> 4) & kmask2) | ((a[2] & kmask3) >> 2));
 
         float4 s = {0.f, 0.f, 0.f, 0.f};
         float smin = 0;
         for (int l = 0; l < n; ++l) {
 
-            s[0] += y1[l] * (q1[l] & 0xF); s[1] += y1[l+32] * (q1[l] >> 4);
-            s[2] += y2[l] * (q2[l] & 0xF); s[3] += y2[l+32] * (q2[l] >> 4);
+            s[0] += y1[l] * (q1[l] & 0xF);
+            s[2] += y2[l] * (q2[l] & 0xF);
+            s[1] += y1[l+32] * (q1[l] >> 4);
+            s[3] += y2[l+32] * (q2[l] >> 4);
             smin += y1[l] * sc2[0] + y1[l+32] * sc2[1] + y2[l] * sc4[0] + y2[l+32] * sc4[1];
 
         }
-        sumf += dall * (s[0] * sc1[0] + s[1] * sc1[1] + s[2] * sc3[0] + s[3] * sc3[1]) - dmin * smin;
+        sumf += dall * dot(s, float4(sc1, sc3)) - dmin * smin;
 
     }
 #else
