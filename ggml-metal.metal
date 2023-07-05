@@ -1490,9 +1490,9 @@ kernel void kernel_mul_mat_q4_K_f32(
 
 #if QK_K == 256
 
-    const uint16_t kmask1 = 0x3f3f;
-    const uint16_t kmask2 = 0x0f0f;
-    const uint16_t kmask3 = 0xc0c0;
+    const uint8_t kmask1 = 0x3f;
+    const uint8_t kmask2 = 0x0f;
+    const uint8_t kmask3 = 0xc0;
 
     const int tid = tpitg.y;   // 0...16
     const int il  = tid/4;     // 0...3
