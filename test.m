@@ -9,8 +9,8 @@ void add_arrays(const float* inA, const float* inB, float* result, int length) {
 }
 
 // The number of floats in each array, and the size of the arrays in bytes.
-const unsigned int arrayLength = 16;
-const unsigned int bufferSize = arrayLength * sizeof(float);
+const unsigned int len = 16;
+const unsigned int size = len * sizeof(float);
 
 int main(void) {
   id<MTLDevice> device = MTLCreateSystemDefaultDevice();
@@ -51,18 +51,15 @@ int main(void) {
 
   // Create buffers to hold data
   // Allocate three buffers to hold our initial data and the result.
-  id<MTLBuffer> bufferA = [device newBufferWithLength:bufferSize
-                                              options:MTLResourceStorageModeShared];
-  id<MTLBuffer> bufferB = [device newBufferWithLength:bufferSize
-                                              options:MTLResourceStorageModeShared];
-  id<MTLBuffer> bufferResult = [device newBufferWithLength:bufferSize
-                                                   options:MTLResourceStorageModeShared];
+  id<MTLBuffer> bufferA = [device newBufferWithLength:size options:MTLResourceStorageModeShared];
+  id<MTLBuffer> bufferB = [device newBufferWithLength:size options:MTLResourceStorageModeShared];
+  id<MTLBuffer> bufResult = [device newBufferWithLength:size options:MTLResourceStorageModeShared];
 
-  for (unsigned long index = 0; index < arrayLength; index++) {
-    float* dataPtr = bufferA.contents;
-    dataPtr[index] = (float)rand() / (float)(RAND_MAX);
-    dataPtr = bufferB.contents;
-    dataPtr[index] = (float)rand() / (float)(RAND_MAX);
+  for (uint i = 0; i < len; i++) {
+    float* ptr = bufferA.contents;
+    ptr[i] = (float)rand() / (float)(RAND_MAX);
+    ptr = bufferB.contents;
+    ptr[i] = (float)rand() / (float)(RAND_MAX);
   }
 
   {
@@ -84,10 +81,10 @@ int main(void) {
       [computeEncoder setComputePipelineState:pipeline];
       [computeEncoder setBuffer:bufferA offset:0 atIndex:0];
       [computeEncoder setBuffer:bufferB offset:0 atIndex:1];
-      [computeEncoder setBuffer:bufferResult offset:0 atIndex:2];
+      [computeEncoder setBuffer:bufResult offset:0 atIndex:2];
 
       // Encode the compute command.
-      [computeEncoder dispatchThreads:MTLSizeMake(arrayLength, 1, 1)
+      [computeEncoder dispatchThreads:MTLSizeMake(len, 1, 1)
                 threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
 
       // End the compute pass.
@@ -105,13 +102,12 @@ int main(void) {
 
   float* a = bufferA.contents;
   float* b = bufferB.contents;
-  float* result = bufferResult.contents;
+  float* result = bufResult.contents;
 
-  for (unsigned long index = 0; index < arrayLength; index++) {
-    if (result[index] != (a[index] + b[index])) {
-      printf("Compute ERROR: index=%lu result=%g vs %g=a+b\n", index, result[index],
-             a[index] + b[index]);
-      assert(result[index] == (a[index] + b[index]));
+  for (uint i = 0; i < len; i++) {
+    if (result[i] != (a[i] + b[i])) {
+      printf("Compute ERROR: index=%u result=%g vs %g=a+b\n", i, result[i], a[i] + b[i]);
+      assert(result[i] == (a[i] + b[i]));
     }
   }
   printf("Compute results as expected\n");
