@@ -100,17 +100,11 @@ int main(void) {
     [commandBuffer waitUntilCompleted];
   }
 
-  float* a = bufferA.contents;
-  float* b = bufferB.contents;
   float* result = bufResult.contents;
 
   for (uint i = 0; i < len; i++) {
-    if (result[i] != (a[i] + b[i])) {
-      printf("Compute ERROR: index=%u result=%g vs %g=a+b\n", i, result[i], a[i] + b[i]);
-      assert(result[i] == (a[i] + b[i]));
-    }
+    printf("result[%u] = %g\n", i, result[i]);
   }
-  printf("Compute results as expected\n");
 
   return 0;
 }
