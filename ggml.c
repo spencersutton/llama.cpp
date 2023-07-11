@@ -4994,12 +4994,9 @@ struct ggml_tensor * ggml_get_tensor(struct ggml_context * ctx, const char * nam
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// ggml_dup
-
-struct ggml_tensor * ggml_dup_impl(
-        struct ggml_context * ctx,
+static struct ggml_tensor * ggml_unary_impl(   struct ggml_context * ctx,
         struct ggml_tensor * a,
-        bool inplace) {
+        bool inplace, enum ggml_op op) {
     bool is_node = false;
 
     if (!inplace && (a->grad)) {
@@ -5008,12 +5005,21 @@ struct ggml_tensor * ggml_dup_impl(
 
     struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
 
-    result->op   = GGML_OP_DUP;
+    result->op   = op;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
     result->src[0] = a;
     result->src[1] = NULL;
 
     return result;
+}
+
+// ggml_dup
+
+struct ggml_tensor * ggml_dup_impl(
+        struct ggml_context * ctx,
+        struct ggml_tensor * a,
+        bool inplace) {
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_DUP);
 }
 
 struct ggml_tensor * ggml_dup(
@@ -5309,20 +5315,7 @@ struct ggml_tensor * ggml_sqr_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_SQR;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_SQR);
 }
 
 struct ggml_tensor * ggml_sqr(
@@ -5343,20 +5336,7 @@ struct ggml_tensor * ggml_sqrt_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_SQRT;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_SQRT);
 }
 
 struct ggml_tensor * ggml_sqrt(
@@ -5378,20 +5358,7 @@ struct ggml_tensor * ggml_log_impl(
         struct ggml_context * ctx,
         struct ggml_tensor  * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_LOG;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_LOG);
 }
 
 struct ggml_tensor * ggml_log(
@@ -5563,20 +5530,7 @@ struct ggml_tensor * ggml_abs_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_ABS;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_ABS);
 }
 
 struct ggml_tensor * ggml_abs(
@@ -5598,20 +5552,7 @@ struct ggml_tensor * ggml_sgn_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_SGN;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_SGN);
 }
 
 struct ggml_tensor * ggml_sgn(
@@ -5632,20 +5573,7 @@ struct ggml_tensor * ggml_neg_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_NEG;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_NEG);
 }
 
 struct ggml_tensor * ggml_neg(
@@ -5666,20 +5594,7 @@ struct ggml_tensor * ggml_step_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_STEP;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_STEP);
 }
 
 struct ggml_tensor * ggml_step(
@@ -5700,20 +5615,7 @@ struct ggml_tensor * ggml_tanh_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_TANH;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_TANH);
 }
 
 struct ggml_tensor * ggml_tanh(
@@ -5734,20 +5636,7 @@ struct ggml_tensor * ggml_elu_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_ELU;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_ELU);
 }
 
 struct ggml_tensor * ggml_elu(
@@ -5768,20 +5657,7 @@ struct ggml_tensor * ggml_relu_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_RELU;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_RELU);
 }
 
 struct ggml_tensor * ggml_relu(
@@ -5802,20 +5678,7 @@ struct ggml_tensor * ggml_gelu_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_GELU;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_GELU);
 }
 
 struct ggml_tensor * ggml_gelu(
@@ -5836,20 +5699,7 @@ struct ggml_tensor * ggml_gelu_quick_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_GELU_QUICK;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_GELU_QUICK);
 }
 
 struct ggml_tensor * ggml_gelu_quick(
@@ -5870,20 +5720,7 @@ struct ggml_tensor * ggml_silu_impl(
         struct ggml_context * ctx,
         struct ggml_tensor * a,
         bool inplace) {
-    bool is_node = false;
-
-    if (!inplace && (a->grad)) {
-        is_node = true;
-    }
-
-    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
-
-    result->op   = GGML_OP_SILU;
-    result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
-    result->src[0] = a;
-    result->src[1] = NULL;
-
-    return result;
+    return ggml_unary_impl(ctx, a, inplace, GGML_OP_SILU);
 }
 
 struct ggml_tensor * ggml_silu(
