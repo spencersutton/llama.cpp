@@ -7236,7 +7236,7 @@ struct ggml_tensor * ggml_flash_attn(
     result->src0 = q;
     result->src1 = k;
     result->src[0] = v;
-    result->src[1] = ggml_new_i32(ctx, masked ? 1 : 0);
+    result->src[3] = ggml_new_i32(ctx, masked ? 1 : 0);
 
     return result;
 }
@@ -7267,7 +7267,7 @@ struct ggml_tensor * ggml_flash_ff(
     result->src0 = a;
     result->src1 = b0;
     result->src[0] = b1;
-    result->src[1] = c0;
+    result->src[3] = c0;
     result->src[4] = c1;
 
     return result;
@@ -7331,7 +7331,7 @@ struct ggml_tensor * ggml_flash_attn_back(
     result->src0 = q;
     result->src1 = k;
     result->src[0] = v;
-    result->src[1] = d;
+    result->src[3] = d;
     result->src[4] = ggml_new_i32(ctx, masked ? 1 : 0);
 
     return result;
@@ -7636,7 +7636,7 @@ struct ggml_tensor * ggml_map_custom3_impl_f32(
     result->src0 = a;
     result->src1 = b;
     result->src[0] = addr_tensor;
-    result->src[1] = c;
+    result->src[3] = c;
 
     return result;
 }
@@ -14786,21 +14786,21 @@ static void ggml_compute_forward(struct ggml_compute_params * params, struct ggm
             } break;
         case GGML_OP_FLASH_ATTN:
             {
-                const int32_t t = ggml_get_i32_1d(tensor->src[1], 0);
+                const int32_t t = ggml_get_i32_1d(tensor->src[3], 0);
                 GGML_ASSERT(t == 0 || t == 1);
                 const bool masked = t != 0;
                 ggml_compute_forward_flash_attn(params, tensor->src0, tensor->src1, tensor->src[0], masked, tensor);
             } break;
         case GGML_OP_FLASH_FF:
             {
-                ggml_compute_forward_flash_ff(params, tensor->src0, tensor->src1, tensor->src[0], tensor->src[1], tensor->src[4], tensor);
+                ggml_compute_forward_flash_ff(params, tensor->src0, tensor->src1, tensor->src[0], tensor->src[3], tensor->src[4], tensor);
             } break;
         case GGML_OP_FLASH_ATTN_BACK:
             {
                 int32_t t = ggml_get_i32_1d(tensor->src[4], 0);
                 GGML_ASSERT(t == 0 || t == 1);
                 bool masked = t != 0;
-                ggml_compute_forward_flash_attn_back(params, tensor->src0, tensor->src1, tensor->src[0], tensor->src[1], masked, tensor);
+                ggml_compute_forward_flash_attn_back(params, tensor->src0, tensor->src1, tensor->src[0], tensor->src[3], masked, tensor);
             } break;
         case GGML_OP_WIN_PART:
             {
@@ -14837,7 +14837,7 @@ static void ggml_compute_forward(struct ggml_compute_params * params, struct ggm
         case GGML_OP_MAP_CUSTOM3:
             {
                 const ggml_custom3_op_f32_t fun = *((ggml_custom3_op_f32_t *)tensor->src[0]->data);
-                ggml_compute_forward_map_custom3(params, tensor->src0, tensor->src1, tensor->src[1], tensor, fun);
+                ggml_compute_forward_map_custom3(params, tensor->src0, tensor->src1, tensor->src[3], tensor, fun);
             }
             break;
         case GGML_OP_CROSS_ENTROPY_LOSS:
@@ -15488,7 +15488,7 @@ static void ggml_compute_backward(struct ggml_context * ctx, struct ggml_tensor 
             {
                 struct ggml_tensor * flash_grad = NULL;
                 if (src0->grad || src1->grad || tensor->src[0]->grad) {
-                    int32_t t = ggml_get_i32_1d(tensor->src[1], 0);
+                    int32_t t = ggml_get_i32_1d(tensor->src[3], 0);
                     GGML_ASSERT(t == 0 || t == 1);
                     bool masked = t != 0;
                     flash_grad =
