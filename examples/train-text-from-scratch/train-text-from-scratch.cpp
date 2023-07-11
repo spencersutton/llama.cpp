@@ -1354,12 +1354,12 @@ struct ggml_tensor * expand(struct ggml_cgraph * g, struct ggml_tensor * t) {
         }
     }
 
-    if (t->src0) {
-        expand(g, t->src0);
+    if (t->src[0]) {
+        expand(g, t->src[0]);
     }
 
-    if (t->src1) {
-        expand(g, t->src1);
+    if (t->src[1]) {
+        expand(g, t->src[1]);
     }
 
     for (int i = 0; i < GGML_MAX_OPT; ++i) {

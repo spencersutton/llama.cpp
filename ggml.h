@@ -414,8 +414,6 @@ extern "C" {
         bool is_param;
 
         struct ggml_tensor * grad;
-        struct ggml_tensor * src0;
-        struct ggml_tensor * src1;
         struct ggml_tensor * src[GGML_MAX_OPT];
 
         // performance
