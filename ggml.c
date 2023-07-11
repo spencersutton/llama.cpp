@@ -15706,14 +15706,6 @@ static void ggml_visit_parents(struct ggml_cgraph * cgraph, struct ggml_tensor *
         }
     }
 
-    if (node->src[0]) {
-        ggml_visit_parents(cgraph, node->src[0]);
-    }
-
-    if (node->src[1]) {
-        ggml_visit_parents(cgraph, node->src[1]);
-    }
-
     for (int i = 0; i < GGML_MAX_OPT; ++i) {
         if (node->src[i]) {
             ggml_visit_parents(cgraph, node->src[i]);
@@ -16603,17 +16595,9 @@ void ggml_graph_export(const struct ggml_cgraph * cgraph, const char * fname) {
         for (int i = 0; i < cgraph->n_nodes; ++i) {
             ggml_graph_export_node(cgraph->nodes[i], "DST", fout);
 
-            if (cgraph->nodes[i]->src[0]) {
-                ggml_graph_export_node(cgraph->nodes[i]->src[0], "SRC0", fout);
-            }
-
-            if (cgraph->nodes[i]->src[1]) {
-                ggml_graph_export_node(cgraph->nodes[i]->src[1], "SRC1", fout);
-            }
-
             for (int j = 0; j < GGML_MAX_OPT; ++j) {
                 if (cgraph->nodes[i]->src[j]) {
-                    ggml_graph_export_node(cgraph->nodes[i]->src[j], "OPT", fout);
+                    ggml_graph_export_node(cgraph->nodes[i]->src[j], "SRC", fout);
                 }
             }
 
@@ -16704,16 +16688,13 @@ void ggml_graph_export(const struct ggml_cgraph * cgraph, const char * fname) {
 
                 // output the op arguments
                 {
-                    struct ggml_tensor * args[2 + GGML_MAX_OPT] = { NULL };
-
-                    args[0] = tensor->src[0];
-                    args[1] = tensor->src[1];
+                    struct ggml_tensor * args[GGML_MAX_OPT] = { NULL };
 
                     for (int j = 0; j < GGML_MAX_OPT; ++j) {
-                        args[2 + j] = tensor->src[j];
+                        args[j] = tensor->src[j];
                     }
 
-                    for (int j = 0; j < 2 + GGML_MAX_OPT; ++j) {
+                    for (int j = 0; j < GGML_MAX_OPT; ++j) {
                         if (args[j]) {
                             int32_t idx = -1;
 
@@ -16931,12 +16912,12 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
 
                 const char * ptr_name = ptr; ptr += GGML_MAX_NAME;
 
-                const int32_t * ptr_arg_idx = (const int32_t *) ptr; ptr += (2 + GGML_MAX_OPT)*sizeof(int32_t);
+                const int32_t * ptr_arg_idx = (const int32_t *) ptr; ptr += GGML_MAX_OPT*sizeof(int32_t);
 
-                struct ggml_tensor * args[2 + GGML_MAX_OPT] = { NULL };
+                struct ggml_tensor * args[GGML_MAX_OPT] = { NULL };
 
                 // parse args
-                for (int j = 0; j < 2 + GGML_MAX_OPT; ++j) {
+                for (int j = 0; j < GGML_MAX_OPT; ++j) {
                     const int32_t arg_idx = ptr_arg_idx[j];
 
                     if (arg_idx == -1) {
@@ -16993,11 +16974,8 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
                     tensor->nb[j] = nb[j];
                 }
 
-                tensor->src[0] = args[0];
-                tensor->src[1] = args[1];
-
                 for (int j = 0; j < GGML_MAX_OPT; ++j) {
-                    tensor->src[j] = args[2 + j];
+                    tensor->src[j] = args[j];
                 }
 
                 result.nodes[i] = tensor;
@@ -17196,18 +17174,10 @@ void ggml_graph_dump_dot(const struct ggml_cgraph * gb, const struct ggml_cgraph
     for (int i = 0; i < gb->n_nodes; i++) {
         struct ggml_tensor * node = gb->nodes[i];
 
-        if (node->src[0]) {
-            ggml_graph_dump_dot_node_edge(fp, gb, node, node->src[0], "x");
-        }
-
-        if (node->src[1]) {
-            ggml_graph_dump_dot_node_edge(fp, gb, node, node->src[1], "y");
-        }
-
         for (int j = 0; j < GGML_MAX_OPT; j++) {
             if (node->src[j]) {
                 char label[16];
-                snprintf(label, sizeof(label), "opt %d", j);
+                snprintf(label, sizeof(label), "src %d", j);
                 ggml_graph_dump_dot_node_edge(fp, gb, node, node->src[j], label);
             }
         }
@@ -17216,18 +17186,10 @@ void ggml_graph_dump_dot(const struct ggml_cgraph * gb, const struct ggml_cgraph
     for (int i = 0; i < gb->n_leafs; i++) {
         struct ggml_tensor * node = gb->leafs[i];
 
-        if (node->src[0]) {
-            ggml_graph_dump_dot_leaf_edge(fp, node, node->src[0], "x");
-        }
-
-        if (node->src[1]) {
-            ggml_graph_dump_dot_leaf_edge(fp, node, node->src[1], "y");
-        }
-
         for (int j = 0; j < GGML_MAX_OPT; j++) {
             if (node->src[j]) {
                 char label[16];
-                snprintf(label, sizeof(label), "opt %d", j);
+                snprintf(label, sizeof(label), "src %d", j);
                 ggml_graph_dump_dot_leaf_edge(fp, node, node->src[j], label);
             }
         }
