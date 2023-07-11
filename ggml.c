@@ -4584,7 +4584,7 @@ struct ggml_tensor * ggml_new_tensor_impl(
         /*.op           =*/ GGML_OP_NONE,
         /*.is_param     =*/ false,
         /*.grad         =*/ NULL,
-        /*.opt          =*/ { NULL },
+        /*.src          =*/ { NULL },
         /*.perf_runs    =*/ 0,
         /*.perf_cycles  =*/ 0,
         /*.perf_time_us =*/ 0,
