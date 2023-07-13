@@ -4,6 +4,8 @@
 #ifndef LLAMA_UTIL_H
 #define LLAMA_UTIL_H
 
+#include <unistd.h>
+
 #include <cerrno>
 #include <climits>
 #include <cstdarg>
@@ -14,17 +16,11 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-
-#ifdef __has_include
-#if __has_include(<unistd.h>)
-#include <unistd.h>
 #if defined(_POSIX_MAPPED_FILES)
 #include <sys/mman.h>
 #endif
 #if defined(_POSIX_MEMLOCK_RANGE)
 #include <sys/resource.h>
-#endif
-#endif
 #endif
 
 #define LLAMA_ASSERT(x)                                                     \
@@ -35,11 +31,7 @@
     }                                                                       \
   } while (0)
 
-#ifdef __GNUC__
-__attribute__((format(printf, 1, 2)))
-#endif
-static std::string
-format(const char *fmt, ...) {
+__attribute__((format(printf, 1, 2))) static std::string format(const char *fmt, ...) {
   va_list ap;
   va_list ap2;
   va_start(ap, fmt);
@@ -219,13 +211,9 @@ struct llama_mlock {
 
   static size_t lock_granularity() { return (size_t)sysconf(_SC_PAGESIZE); }
 
-#ifdef __APPLE__
 #define MLOCK_SUGGESTION                                                                          \
   "Try increasing the sysctl values 'vm.user_wire_limit' and 'vm.global_user_wire_limit' and/or " \
   "decreasing 'vm.global_no_user_wire_amount'.  Also try increasing RLIMIT_MLOCK (ulimit -l).\n"
-#else
-#define MLOCK_SUGGESTION "Try increasing RLIMIT_MLOCK ('ulimit -l' as root).\n"
-#endif
 
   bool raw_lock(const void *addr, size_t size) const {
     if (!mlock(addr, size)) {

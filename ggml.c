@@ -333,66 +333,6 @@ static const size_t CACHE_LINE_SIZE_F32 = CACHE_LINE_SIZE / sizeof(float);
 
 #if defined(__ARM_NEON)
 
-#if !defined(__aarch64__)
-
-inline static uint16_t vaddvq_u8(uint8x16_t v) {
-  return (uint16_t)vgetq_lane_u8(v, 0) + (uint16_t)vgetq_lane_u8(v, 1) + (uint16_t)vgetq_lane_u8(v, 2) +
-         (uint16_t)vgetq_lane_u8(v, 3) + (uint16_t)vgetq_lane_u8(v, 4) + (uint16_t)vgetq_lane_u8(v, 5) +
-         (uint16_t)vgetq_lane_u8(v, 6) + (uint16_t)vgetq_lane_u8(v, 7) + (uint16_t)vgetq_lane_u8(v, 8) +
-         (uint16_t)vgetq_lane_u8(v, 9) + (uint16_t)vgetq_lane_u8(v, 10) + (uint16_t)vgetq_lane_u8(v, 11) +
-         (uint16_t)vgetq_lane_u8(v, 12) + (uint16_t)vgetq_lane_u8(v, 13) + (uint16_t)vgetq_lane_u8(v, 14) +
-         (uint16_t)vgetq_lane_u8(v, 15);
-}
-
-inline static int16_t vaddvq_s8(int8x16_t v) {
-  return (int16_t)vgetq_lane_s8(v, 0) + (int16_t)vgetq_lane_s8(v, 1) + (int16_t)vgetq_lane_s8(v, 2) +
-         (int16_t)vgetq_lane_s8(v, 3) + (int16_t)vgetq_lane_s8(v, 4) + (int16_t)vgetq_lane_s8(v, 5) +
-         (int16_t)vgetq_lane_s8(v, 6) + (int16_t)vgetq_lane_s8(v, 7) + (int16_t)vgetq_lane_s8(v, 8) +
-         (int16_t)vgetq_lane_s8(v, 9) + (int16_t)vgetq_lane_s8(v, 10) + (int16_t)vgetq_lane_s8(v, 11) +
-         (int16_t)vgetq_lane_s8(v, 12) + (int16_t)vgetq_lane_s8(v, 13) + (int16_t)vgetq_lane_s8(v, 14) +
-         (int16_t)vgetq_lane_s8(v, 15);
-}
-
-inline static int32_t vaddvq_s16(int16x8_t v) {
-  return (int32_t)vgetq_lane_s16(v, 0) + (int32_t)vgetq_lane_s16(v, 1) + (int32_t)vgetq_lane_s16(v, 2) +
-         (int32_t)vgetq_lane_s16(v, 3) + (int32_t)vgetq_lane_s16(v, 4) + (int32_t)vgetq_lane_s16(v, 5) +
-         (int32_t)vgetq_lane_s16(v, 6) + (int32_t)vgetq_lane_s16(v, 7);
-}
-
-inline static uint32_t vaddvq_u16(uint16x8_t v) {
-  return (uint32_t)vgetq_lane_u16(v, 0) + (uint32_t)vgetq_lane_u16(v, 1) + (uint32_t)vgetq_lane_u16(v, 2) +
-         (uint32_t)vgetq_lane_u16(v, 3) + (uint32_t)vgetq_lane_u16(v, 4) + (uint32_t)vgetq_lane_u16(v, 5) +
-         (uint32_t)vgetq_lane_u16(v, 6) + (uint32_t)vgetq_lane_u16(v, 7);
-}
-
-inline static int32_t vaddvq_s32(int32x4_t v) {
-  return vgetq_lane_s32(v, 0) + vgetq_lane_s32(v, 1) + vgetq_lane_s32(v, 2) + vgetq_lane_s32(v, 3);
-}
-
-inline static float vaddvq_f32(float32x4_t v) {
-  return vgetq_lane_f32(v, 0) + vgetq_lane_f32(v, 1) + vgetq_lane_f32(v, 2) + vgetq_lane_f32(v, 3);
-}
-
-inline static float vminvq_f32(float32x4_t v) {
-  return MIN(MIN(vgetq_lane_f32(v, 0), vgetq_lane_f32(v, 1)), MIN(vgetq_lane_f32(v, 2), vgetq_lane_f32(v, 3)));
-}
-
-inline static float vmaxvq_f32(float32x4_t v) {
-  return MAX(MAX(vgetq_lane_f32(v, 0), vgetq_lane_f32(v, 1)), MAX(vgetq_lane_f32(v, 2), vgetq_lane_f32(v, 3)));
-}
-
-inline static int32x4_t vcvtnq_s32_f32(float32x4_t v) {
-  int32x4_t res;
-
-  res[0] = roundf(vgetq_lane_f32(v, 0));
-  res[1] = roundf(vgetq_lane_f32(v, 1));
-  res[2] = roundf(vgetq_lane_f32(v, 2));
-  res[3] = roundf(vgetq_lane_f32(v, 3));
-
-  return res;
-}
-
-#endif
 #endif
 
 #define QK4_0 32
@@ -7641,15 +7581,6 @@ static void ggml_compute_forward_gelu_f32(const struct ggml_compute_params *para
   for (int i1 = ir0; i1 < ir1; i1++) {
     ggml_vec_gelu_f32(nc, (float *)((char *)dst->data + i1 * (dst->nb[1])),
                       (float *)((char *)src0->data + i1 * (src0->nb[1])));
-
-#ifndef NDEBUG
-    for (int k = 0; k < nc; k++) {
-      const float x = ((float *)((char *)dst->data + i1 * (dst->nb[1])))[k];
-      UNUSED(x);
-      assert(!isnan(x));
-      assert(!isinf(x));
-    }
-#endif
   }
 }
 
@@ -7693,15 +7624,6 @@ static void ggml_compute_forward_gelu_quick_f32(const struct ggml_compute_params
   for (int i1 = ir0; i1 < ir1; i1++) {
     ggml_vec_gelu_quick_f32(nc, (float *)((char *)dst->data + i1 * (dst->nb[1])),
                             (float *)((char *)src0->data + i1 * (src0->nb[1])));
-
-#ifndef NDEBUG
-    for (int k = 0; k < nc; k++) {
-      const float x = ((float *)((char *)dst->data + i1 * (dst->nb[1])))[k];
-      UNUSED(x);
-      assert(!isnan(x));
-      assert(!isinf(x));
-    }
-#endif
   }
 }
 
@@ -7745,15 +7667,6 @@ static void ggml_compute_forward_silu_f32(const struct ggml_compute_params *para
   for (int i1 = ir0; i1 < ir1; i1++) {
     ggml_vec_silu_f32(nc, (float *)((char *)dst->data + i1 * (dst->nb[1])),
                       (float *)((char *)src0->data + i1 * (src0->nb[1])));
-
-#ifndef NDEBUG
-    for (int k = 0; k < nc; k++) {
-      const float x = ((float *)((char *)dst->data + i1 * (dst->nb[1])))[k];
-      UNUSED(x);
-      assert(!isnan(x));
-      assert(!isinf(x));
-    }
-#endif
   }
 }
 
@@ -7800,15 +7713,6 @@ static void ggml_compute_forward_silu_back_f32(const struct ggml_compute_params 
     ggml_vec_silu_backward_f32(nc, (float *)((char *)dst->data + i1 * (dst->nb[1])),
                                (float *)((char *)src0->data + i1 * (src0->nb[1])),
                                (float *)((char *)grad->data + i1 * (grad->nb[1])));
-
-#ifndef NDEBUG
-    for (int k = 0; k < nc; k++) {
-      const float x = ((float *)((char *)dst->data + i1 * (dst->nb[1])))[k];
-      UNUSED(x);
-      assert(!isnan(x));
-      assert(!isinf(x));
-    }
-#endif
   }
 }
 
@@ -8991,13 +8895,6 @@ static void ggml_compute_forward_soft_max_f32(const struct ggml_compute_params *
     float *sp = (float *)((char *)src0->data + i1 * src0->nb[1]);
     float *dp = (float *)((char *)dst->data + i1 * dst->nb[1]);
 
-#ifndef NDEBUG
-    for (int i = 0; i < nc; ++i) {
-      // printf("p[%d] = %f\n", i, p[i]);
-      assert(!isnan(sp[i]));
-    }
-#endif
-
     float max = -INFINITY;
     ggml_vec_max_f32(nc, &max, sp);
 
@@ -9021,13 +8918,6 @@ static void ggml_compute_forward_soft_max_f32(const struct ggml_compute_params *
 
     sum = 1.0 / sum;
     ggml_vec_scale_f32(nc, dp, sum);
-
-#ifndef NDEBUG
-    for (int i = 0; i < nc; ++i) {
-      assert(!isnan(dp[i]));
-      assert(!isinf(dp[i]));
-    }
-#endif
   }
 }
 
@@ -9078,13 +8968,6 @@ static void ggml_compute_forward_soft_max_back_f32(const struct ggml_compute_par
     float *y = (float *)((char *)src1->data + i1 * src1->nb[1]);
     float *dx = (float *)((char *)dst->data + i1 * dst->nb[1]);
 
-#ifndef NDEBUG
-    for (int i = 0; i < nc; ++i) {
-      // printf("p[%d] = %f\n", i, p[i]);
-      assert(!isnan(dy[i]));
-      assert(!isnan(y[i]));
-    }
-#endif
     // Jii = yi - yi*yi
     // Jij = -yi*yj
     // J = diag(y)-y.T*y
@@ -9109,13 +8992,6 @@ static void ggml_compute_forward_soft_max_back_f32(const struct ggml_compute_par
     ggml_vec_cpy_f32(nc, dx, dy);
     ggml_vec_acc1_f32(nc, dx, -dot_y_dy);
     ggml_vec_mul_f32(nc, dx, dx, y);
-
-#ifndef NDEBUG
-    for (int i = 0; i < nc; ++i) {
-      assert(!isnan(dx[i]));
-      assert(!isinf(dx[i]));
-    }
-#endif
   }
 }
 
@@ -10719,13 +10595,6 @@ static void ggml_compute_forward_flash_attn_f32(const struct ggml_compute_params
 
       sum = 1.0 / sum;
       ggml_vec_scale_f32(M, S, sum);
-
-#ifndef NDEBUG
-      for (int i = 0; i < M; ++i) {
-        assert(!isnan(S[i]));
-        assert(!isinf(S[i]));
-      }
-#endif
     }
 
     for (int64_t ic = 0; ic < nev1; ++ic) {
@@ -10904,13 +10773,6 @@ static void ggml_compute_forward_flash_attn_f16(const struct ggml_compute_params
 
       sum = 1.0 / sum;
       ggml_vec_scale_f32(M, S, sum);
-
-#ifndef NDEBUG
-      for (int i = 0; i < M; ++i) {
-        assert(!isnan(S[i]));
-        assert(!isinf(S[i]));
-      }
-#endif
     }
 
     ggml_fp16_t *S16 = (ggml_fp16_t *)((float *)params->wdata + ith * (2 * Mup + CACHE_LINE_SIZE_F32) + Mup);
@@ -11759,13 +11621,6 @@ static void ggml_compute_forward_cross_entropy_loss_f32(const struct ggml_comput
     float *s1 = (float *)((char *)src1->data + i1 * src1->nb[1]);
     float *st = (float *)params->wdata + nth + ith * nc;
 
-#ifndef NDEBUG
-    for (int i = 0; i < nc; ++i) {
-      // printf("p[%d] = %f\n", i, p[i]);
-      assert(!isnan(s0[i]));
-      assert(!isnan(s1[i]));
-    }
-#endif
     // soft_max
     ggml_float sum = 0.0;
     {
@@ -11797,13 +11652,6 @@ static void ggml_compute_forward_cross_entropy_loss_f32(const struct ggml_comput
     ggml_vec_mul_f32(nc, st, st, s1);
 
     ggml_vec_sum_f32(nc, sums + ith, st);
-
-#ifndef NDEBUG
-    for (int i = 0; i < nc; ++i) {
-      assert(!isnan(st[i]));
-      assert(!isinf(st[i]));
-    }
-#endif
   }
 }
 
@@ -11860,13 +11708,6 @@ static void ggml_compute_forward_cross_entropy_loss_back_f32(const struct ggml_c
     float *s1 = (float *)((char *)src1->data + i1 * src1->nb[1]);
     float *sm = (float *)params->wdata + ith * nc;
 
-#ifndef NDEBUG
-    for (int i = 0; i < nc; ++i) {
-      // printf("p[%d] = %f\n", i, p[i]);
-      assert(!isnan(s0[i]));
-      assert(!isnan(s1[i]));
-    }
-#endif
     // step by step explanation:
     {
       // float * sums = (float *) params->wdata;
@@ -11951,15 +11792,6 @@ static void ggml_compute_forward_cross_entropy_loss_back_f32(const struct ggml_c
     ggml_vec_dot_f32(nc, &dot_st1_dst1, sm, ds0);
     ggml_vec_acc1_f32(nc, ds0, -dot_st1_dst1);
     ggml_vec_mul_f32(nc, ds0, ds0, sm);
-
-#ifndef NDEBUG
-    for (int i = 0; i < nc; ++i) {
-      assert(!isnan(sm[i]));
-      assert(!isinf(sm[i]));
-      assert(!isnan(ds0[i]));
-      assert(!isinf(ds0[i]));
-    }
-#endif
   }
 }
 
@@ -12890,19 +12722,6 @@ struct ggml_cgraph ggml_build_backward(struct ggml_context *ctx, struct ggml_cgr
 // I tried using spin locks, but not sure how to use them correctly - the things I tried were slower than busy loops
 //
 
-#ifdef __APPLE__
-
-// #include <os/lock.h>
-//
-// typedef os_unfair_lock ggml_lock_t;
-//
-// #define ggml_lock_init(x)    UNUSED(x)
-// #define ggml_lock_destroy(x) UNUSED(x)
-// #define ggml_lock_lock       os_unfair_lock_lock
-// #define ggml_lock_unlock     os_unfair_lock_unlock
-//
-// #define GGML_LOCK_INITIALIZER OS_UNFAIR_LOCK_INIT
-
 typedef int ggml_lock_t;
 
 #define ggml_lock_init(x) UNUSED(x)
@@ -12912,39 +12731,8 @@ typedef int ggml_lock_t;
 
 #define GGML_LOCK_INITIALIZER 0
 
-typedef pthread_t ggml_thread_t;
-
 #define ggml_thread_create pthread_create
 #define ggml_thread_join pthread_join
-
-#else
-
-// typedef pthread_spinlock_t ggml_lock_t;
-
-// #define ggml_lock_init(x) pthread_spin_init(x, PTHREAD_PROCESS_PRIVATE)
-// #define ggml_lock_destroy pthread_spin_destroy
-// #define ggml_lock_lock    pthread_spin_lock
-// #define ggml_lock_unlock  pthread_spin_unlock
-
-typedef int ggml_lock_t;
-
-#define ggml_lock_init(x) UNUSED(x)
-#define ggml_lock_destroy(x) UNUSED(x)
-#if defined(__x86_64__) || (defined(_MSC_VER) && defined(_M_AMD64))
-#define ggml_lock_lock(x) _mm_pause()
-#else
-#define ggml_lock_lock(x) UNUSED(x)
-#endif
-#define ggml_lock_unlock(x) UNUSED(x)
-
-#define GGML_LOCK_INITIALIZER 0
-
-typedef pthread_t ggml_thread_t;
-
-#define ggml_thread_create pthread_create
-#define ggml_thread_join pthread_join
-
-#endif
 
 // Android's libc implementation "bionic" does not support setting affinity
 // TODO: Windows etc.
@@ -12973,7 +12761,7 @@ struct ggml_compute_state_shared {
 };
 
 struct ggml_compute_state {
-  ggml_thread_t thrd;
+  pthread_t thrd;
   int ith;
   struct ggml_compute_state_shared *shared;
 };

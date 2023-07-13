@@ -1,5 +1,11 @@
 #include "common.h"
 
+#include <sys/ioctl.h>
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <wchar.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cstring>
@@ -11,17 +17,7 @@
 #include <string>
 #include <unordered_set>
 
-#if defined(__APPLE__) && defined(__MACH__)
-#include <sys/sysctl.h>
-#include <sys/types.h>
-#endif
-
-#include <sys/ioctl.h>
-#include <unistd.h>
-#include <wchar.h>
-
 int32_t get_num_physical_cores() {
-#if defined(__APPLE__) && defined(__MACH__)
   int32_t num_physical_cores;
   size_t len = sizeof(num_physical_cores);
   int result = sysctlbyname("hw.perflevel0.physicalcpu", &num_physical_cores, &len, NULL, 0);
@@ -32,7 +28,6 @@ int32_t get_num_physical_cores() {
   if (result == 0) {
     return num_physical_cores;
   }
-#endif
   unsigned int n_threads = std::thread::hardware_concurrency();
   return n_threads > 0 ? (n_threads <= 4 ? n_threads : n_threads / 2) : 4;
 }

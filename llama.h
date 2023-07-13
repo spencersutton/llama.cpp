@@ -7,11 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __GNUC__
 #define DEPRECATED(func, hint) func __attribute__((deprecated(hint)))
-#else
-#define DEPRECATED(func, hint) func
-#endif
 
 #define LLAMA_FILE_MAGIC_GGJT 0x67676a74u  // 'ggjt'
 #define LLAMA_FILE_MAGIC_GGLA 0x67676c61u  // 'ggla'

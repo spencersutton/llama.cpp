@@ -5,16 +5,16 @@ ud() {
 }
 
 defines=(
-    # -D __aarch64__
-    # -D __APPLE__
+    -D __aarch64__
+    -D __APPLE__
     # -D __ARM_FEATURE_DOTPROD
     # -D __ARM_FEATURE_FMA
     # -D __ARM_FEATURE_FP16_VECTOR_ARITHMETIC
     # -D __ARM_NEON
-    # -D __GNUC__
-    # -D __has_include
-    # -D __MACH__
-    # -D NDEBUG
+    -D __GNUC__
+    -D __has_include
+    -D __MACH__
+    -D NDEBUG
     -k
     -U __AVX__
     -U __AVX2__
