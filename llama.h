@@ -61,7 +61,6 @@ struct llama_context_params {
   int32_t n_ctx;                          // text context
   int32_t n_batch;                        // prompt processing batch size
   int32_t n_gpu_layers;                   // number of layers to store in VRAM
-  int32_t main_gpu;                       // the GPU that is used for scratch and small tensors
   float tensor_split[LLAMA_MAX_DEVICES];  // how to split layers across multiple GPUs
   // called with a progress value between 0 and 1, pass NULL to disable
   llama_progress_callback progress_callback;
