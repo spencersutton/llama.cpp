@@ -521,8 +521,12 @@ static void quantize_row_q4_1_reference(const float * restrict x, block_q4_1 * r
         for (int j = 0; j < qk; j++) {
             const float v = x[i * qk + j];
 
-            if (v < min) min = v;
-            if (v > max) max = v;
+            if (v < min) {
+                min = v;
+            }
+            if (v > max) {
+                max = v;
+            }
         }
 
         const float d = (max - min) / ((1 << 4) - 1);
@@ -610,8 +614,12 @@ static void quantize_row_q5_1_reference(const float * restrict x, block_q5_1 * r
         for (int j = 0; j < qk; j++) {
             const float v = x[i * qk + j];
 
-            if (v < min) min = v;
-            if (v > max) max = v;
+            if (v < min) {
+                min = v;
+            }
+            if (v > max) {
+                max = v;
+            }
         }
 
         const float d = (max - min) / ((1 << 5) - 1);
@@ -683,12 +691,22 @@ static void quantize_row_q8_0(const float * restrict x, void * restrict vy, int 
         float32x4_t asrcv[8];
         float32x4_t amaxv[8];
 
-        for (int j = 0; j < 8; j++) srcv[j] = vld1q_f32(x + i * 32 + 4 * j);
-        for (int j = 0; j < 8; j++) asrcv[j] = vabsq_f32(srcv[j]);
+        for (int j = 0; j < 8; j++) {
+            srcv[j] = vld1q_f32(x + i * 32 + 4 * j);
+        }
+        for (int j = 0; j < 8; j++) {
+            asrcv[j] = vabsq_f32(srcv[j]);
+        }
 
-        for (int j = 0; j < 4; j++) amaxv[2 * j] = vmaxq_f32(asrcv[2 * j], asrcv[2 * j + 1]);
-        for (int j = 0; j < 2; j++) amaxv[4 * j] = vmaxq_f32(amaxv[4 * j], amaxv[4 * j + 2]);
-        for (int j = 0; j < 1; j++) amaxv[8 * j] = vmaxq_f32(amaxv[8 * j], amaxv[8 * j + 4]);
+        for (int j = 0; j < 4; j++) {
+            amaxv[2 * j] = vmaxq_f32(asrcv[2 * j], asrcv[2 * j + 1]);
+        }
+        for (int j = 0; j < 2; j++) {
+            amaxv[4 * j] = vmaxq_f32(amaxv[4 * j], amaxv[4 * j + 2]);
+        }
+        for (int j = 0; j < 1; j++) {
+            amaxv[8 * j] = vmaxq_f32(amaxv[8 * j], amaxv[8 * j + 4]);
+        }
 
         const float amax = vmaxvq_f32(amaxv[0]);
 
@@ -761,12 +779,22 @@ static void quantize_row_q8_1(const float * restrict x, void * restrict vy, int 
         float32x4_t asrcv[8];
         float32x4_t amaxv[8];
 
-        for (int j = 0; j < 8; j++) srcv[j] = vld1q_f32(x + i * 32 + 4 * j);
-        for (int j = 0; j < 8; j++) asrcv[j] = vabsq_f32(srcv[j]);
+        for (int j = 0; j < 8; j++) {
+            srcv[j] = vld1q_f32(x + i * 32 + 4 * j);
+        }
+        for (int j = 0; j < 8; j++) {
+            asrcv[j] = vabsq_f32(srcv[j]);
+        }
 
-        for (int j = 0; j < 4; j++) amaxv[2 * j] = vmaxq_f32(asrcv[2 * j], asrcv[2 * j + 1]);
-        for (int j = 0; j < 2; j++) amaxv[4 * j] = vmaxq_f32(amaxv[4 * j], amaxv[4 * j + 2]);
-        for (int j = 0; j < 1; j++) amaxv[8 * j] = vmaxq_f32(amaxv[8 * j], amaxv[8 * j + 4]);
+        for (int j = 0; j < 4; j++) {
+            amaxv[2 * j] = vmaxq_f32(asrcv[2 * j], asrcv[2 * j + 1]);
+        }
+        for (int j = 0; j < 2; j++) {
+            amaxv[4 * j] = vmaxq_f32(amaxv[4 * j], amaxv[4 * j + 2]);
+        }
+        for (int j = 0; j < 1; j++) {
+            amaxv[8 * j] = vmaxq_f32(amaxv[8 * j], amaxv[8 * j + 4]);
+        }
 
         const float amax = vmaxvq_f32(amaxv[0]);
 
@@ -909,13 +937,13 @@ static void dequantize_row_q8_0(const void * restrict vx, float * restrict y, in
     }
 }
 
-static void ggml_vec_dot_f32(const int n, float * restrict s, const float * restrict x, const float * restrict y);
-static void ggml_vec_dot_f16(const int n, float * restrict s, ggml_fp16_t * restrict x, ggml_fp16_t * restrict y);
-static void ggml_vec_dot_q4_0_q8_0(const int n, float * restrict s, const void * restrict vx, const void * restrict vy);
-static void ggml_vec_dot_q4_1_q8_1(const int n, float * restrict s, const void * restrict vx, const void * restrict vy);
-static void ggml_vec_dot_q5_0_q8_0(const int n, float * restrict s, const void * restrict vx, const void * restrict vy);
-static void ggml_vec_dot_q5_1_q8_1(const int n, float * restrict s, const void * restrict vx, const void * restrict vy);
-static void ggml_vec_dot_q8_0_q8_0(const int n, float * restrict s, const void * restrict vx, const void * restrict vy);
+static void ggml_vec_dot_f32(int n, float * restrict s, const float * restrict x, const float * restrict y);
+static void ggml_vec_dot_f16(int n, float * restrict s, ggml_fp16_t * restrict x, ggml_fp16_t * restrict y);
+static void ggml_vec_dot_q4_0_q8_0(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
+static void ggml_vec_dot_q4_1_q8_1(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
+static void ggml_vec_dot_q5_0_q8_0(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
+static void ggml_vec_dot_q5_1_q8_1(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
+static void ggml_vec_dot_q8_0_q8_0(int n, float * restrict s, const void * restrict vx, const void * restrict vy);
 
 static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
     [GGML_TYPE_F32] = {
@@ -1050,21 +1078,21 @@ ggml_type_traits_t ggml_internal_get_type_traits(enum ggml_type i) {
 #define GGML_F32x4_ADD vaddq_f32
 #define GGML_F32x4_MUL vmulq_f32
 #define GGML_F32x4_REDUCE_ONE(x) vaddvq_f32(x)
-#define GGML_F32x4_REDUCE(res, x)                  \
-    {                                              \
-        int offset = GGML_F32_ARR >> 1;            \
-        for (int i = 0; i < offset; ++i) {         \
-            x[i] = vaddq_f32(x[i], x[offset + i]); \
-        }                                          \
-        offset >>= 1;                              \
-        for (int i = 0; i < offset; ++i) {         \
-            x[i] = vaddq_f32(x[i], x[offset + i]); \
-        }                                          \
-        offset >>= 1;                              \
-        for (int i = 0; i < offset; ++i) {         \
-            x[i] = vaddq_f32(x[i], x[offset + i]); \
-        }                                          \
-        res = GGML_F32x4_REDUCE_ONE(x[0]);         \
+#define GGML_F32x4_REDUCE(res, x)                        \
+    {                                                    \
+        int offset = GGML_F32_ARR >> 1;                  \
+        for (int i = 0; i < offset; ++i) {               \
+            (x)[i] = vaddq_f32((x)[i], (x)[offset + i]); \
+        }                                                \
+        offset >>= 1;                                    \
+        for (int i = 0; i < offset; ++i) {               \
+            (x)[i] = vaddq_f32((x)[i], (x)[offset + i]); \
+        }                                                \
+        offset >>= 1;                                    \
+        for (int i = 0; i < offset; ++i) {               \
+            (x)[i] = vaddq_f32((x)[i], (x)[offset + i]); \
+        }                                                \
+        (res) = GGML_F32x4_REDUCE_ONE((x)[0]);           \
     }
 
 #define GGML_F32_VEC GGML_F32x4
@@ -1091,30 +1119,30 @@ ggml_type_traits_t ggml_internal_get_type_traits(enum ggml_type i) {
 #define GGML_F16x8_FMA(a, b, c) vfmaq_f16(a, b, c)
 #define GGML_F16x8_ADD vaddq_f16
 #define GGML_F16x8_MUL vmulq_f16
-#define GGML_F16x8_REDUCE(res, x)                                 \
-    {                                                             \
-        int offset = GGML_F16_ARR >> 1;                           \
-        for (int i = 0; i < offset; ++i) {                        \
-            x[i] = vaddq_f16(x[i], x[offset + i]);                \
-        }                                                         \
-        offset >>= 1;                                             \
-        for (int i = 0; i < offset; ++i) {                        \
-            x[i] = vaddq_f16(x[i], x[offset + i]);                \
-        }                                                         \
-        offset >>= 1;                                             \
-        for (int i = 0; i < offset; ++i) {                        \
-            x[i] = vaddq_f16(x[i], x[offset + i]);                \
-        }                                                         \
-        const float32x4_t t0 = vcvt_f32_f16(vget_low_f16(x[0]));  \
-        const float32x4_t t1 = vcvt_f32_f16(vget_high_f16(x[0])); \
-        res = (ggml_float) vaddvq_f32(vaddq_f32(t0, t1));         \
+#define GGML_F16x8_REDUCE(res, x)                                   \
+    {                                                               \
+        int offset = GGML_F16_ARR >> 1;                             \
+        for (int i = 0; i < offset; ++i) {                          \
+            (x)[i] = vaddq_f16((x)[i], (x)[offset + i]);            \
+        }                                                           \
+        offset >>= 1;                                               \
+        for (int i = 0; i < offset; ++i) {                          \
+            (x)[i] = vaddq_f16((x)[i], (x)[offset + i]);            \
+        }                                                           \
+        offset >>= 1;                                               \
+        for (int i = 0; i < offset; ++i) {                          \
+            (x)[i] = vaddq_f16((x)[i], (x)[offset + i]);            \
+        }                                                           \
+        const float32x4_t t0 = vcvt_f32_f16(vget_low_f16((x)[0]));  \
+        const float32x4_t t1 = vcvt_f32_f16(vget_high_f16((x)[0])); \
+        (res) = (ggml_float) vaddvq_f32(vaddq_f32(t0, t1));         \
     }
 
 #define GGML_F16_VEC GGML_F16x8
 #define GGML_F16_VEC_ZERO GGML_F16x8_ZERO
 #define GGML_F16_VEC_SET1 GGML_F16x8_SET1
 #define GGML_F16_VEC_LOAD(p, i) GGML_F16x8_LOAD(p)
-#define GGML_F16_VEC_STORE(p, r, i) GGML_F16x8_STORE(p, r[i])
+#define GGML_F16_VEC_STORE(p, r, i) GGML_F16x8_STORE(p, (r)[i])
 #define GGML_F16_VEC_FMA GGML_F16x8_FMA
 #define GGML_F16_VEC_ADD GGML_F16x8_ADD
 #define GGML_F16_VEC_MUL GGML_F16x8_MUL
@@ -1161,50 +1189,78 @@ ggml_type_traits_t ggml_internal_get_type_traits(enum ggml_type i) {
 //
 
 inline static void ggml_vec_set_i8(const int n, int8_t * x, const int8_t v) {
-    for (int i = 0; i < n; ++i) x[i] = v;
+    for (int i = 0; i < n; ++i) {
+        x[i] = v;
+    }
 }
 
 inline static void ggml_vec_set_i16(const int n, int16_t * x, const int16_t v) {
-    for (int i = 0; i < n; ++i) x[i] = v;
+    for (int i = 0; i < n; ++i) {
+        x[i] = v;
+    }
 }
 
 inline static void ggml_vec_set_i32(const int n, int32_t * x, const int32_t v) {
-    for (int i = 0; i < n; ++i) x[i] = v;
+    for (int i = 0; i < n; ++i) {
+        x[i] = v;
+    }
 }
 
 inline static void ggml_vec_set_f16(const int n, ggml_fp16_t * x, const int32_t v) {
-    for (int i = 0; i < n; ++i) x[i] = v;
+    for (int i = 0; i < n; ++i) {
+        x[i] = v;
+    }
 }
 
 inline static void ggml_vec_add_f32(const int n, float * z, const float * x, const float * y) {
-    for (int i = 0; i < n; ++i) z[i] = x[i] + y[i];
+    for (int i = 0; i < n; ++i) {
+        z[i] = x[i] + y[i];
+    }
 }
 inline static void ggml_vec_add1_f32(const int n, float * z, const float * x, const float v) {
-    for (int i = 0; i < n; ++i) z[i] = x[i] + v;
+    for (int i = 0; i < n; ++i) {
+        z[i] = x[i] + v;
+    }
 }
 inline static void ggml_vec_acc_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] += x[i];
+    for (int i = 0; i < n; ++i) {
+        y[i] += x[i];
+    }
 }
 inline static void ggml_vec_acc1_f32(const int n, float * y, const float v) {
-    for (int i = 0; i < n; ++i) y[i] += v;
+    for (int i = 0; i < n; ++i) {
+        y[i] += v;
+    }
 }
 inline static void ggml_vec_sub_f32(const int n, float * z, const float * x, const float * y) {
-    for (int i = 0; i < n; ++i) z[i] = x[i] - y[i];
+    for (int i = 0; i < n; ++i) {
+        z[i] = x[i] - y[i];
+    }
 }
 inline static void ggml_vec_set_f32(const int n, float * x, const float v) {
-    for (int i = 0; i < n; ++i) x[i] = v;
+    for (int i = 0; i < n; ++i) {
+        x[i] = v;
+    }
 }
 inline static void ggml_vec_cpy_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = x[i];
+    for (int i = 0; i < n; ++i) {
+        y[i] = x[i];
+    }
 }
 inline static void ggml_vec_neg_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = -x[i];
+    for (int i = 0; i < n; ++i) {
+        y[i] = -x[i];
+    }
 }
 inline static void ggml_vec_mul_f32(const int n, float * z, const float * x, const float * y) {
-    for (int i = 0; i < n; ++i) z[i] = x[i] * y[i];
+    for (int i = 0; i < n; ++i) {
+        z[i] = x[i] * y[i];
+    }
 }
 inline static void ggml_vec_div_f32(const int n, float * z, const float * x, const float * y) {
-    for (int i = 0; i < n; ++i) z[i] = x[i] / y[i];
+    for (int i = 0; i < n; ++i) {
+        z[i] = x[i] / y[i];
+    }
 }
 
 static void ggml_vec_dot_f32(const int n, float * restrict s, const float * restrict x, const float * restrict y) {
@@ -1911,31 +1967,49 @@ inline static void ggml_vec_norm_f32(const int n, float * s, const float * x) {
     *s = sqrtf(*s);
 }
 inline static void ggml_vec_sqr_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = x[i] * x[i];
+    for (int i = 0; i < n; ++i) {
+        y[i] = x[i] * x[i];
+    }
 }
 inline static void ggml_vec_sqrt_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = sqrtf(x[i]);
+    for (int i = 0; i < n; ++i) {
+        y[i] = sqrtf(x[i]);
+    }
 }
 inline static void ggml_vec_log_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = logf(x[i]);
+    for (int i = 0; i < n; ++i) {
+        y[i] = logf(x[i]);
+    }
 }
 inline static void ggml_vec_abs_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = fabsf(x[i]);
+    for (int i = 0; i < n; ++i) {
+        y[i] = fabsf(x[i]);
+    }
 }
 inline static void ggml_vec_sgn_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = (x[i] > 0.f) ? 1.f : ((x[i] < 0.f) ? -1.f : 0.f);
+    for (int i = 0; i < n; ++i) {
+        y[i] = (x[i] > 0.f) ? 1.f : ((x[i] < 0.f) ? -1.f : 0.f);
+    }
 }
 inline static void ggml_vec_step_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = (x[i] > 0.f) ? 1.f : 0.f;
+    for (int i = 0; i < n; ++i) {
+        y[i] = (x[i] > 0.f) ? 1.f : 0.f;
+    }
 }
 inline static void ggml_vec_tanh_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = tanhf(x[i]);
+    for (int i = 0; i < n; ++i) {
+        y[i] = tanhf(x[i]);
+    }
 }
 inline static void ggml_vec_elu_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = (x[i] > 0.f) ? x[i] : expf(x[i]) - 1;
+    for (int i = 0; i < n; ++i) {
+        y[i] = (x[i] > 0.f) ? x[i] : expf(x[i]) - 1;
+    }
 }
 inline static void ggml_vec_relu_f32(const int n, float * y, const float * x) {
-    for (int i = 0; i < n; ++i) y[i] = (x[i] > 0.f) ? x[i] : 0.f;
+    for (int i = 0; i < n; ++i) {
+        y[i] = (x[i] > 0.f) ? x[i] : 0.f;
+    }
 }
 
 static const float GELU_COEF_A = 0.044715f;
@@ -10249,8 +10323,12 @@ static void ggml_compute_forward_rope_f32(
         for (int64_t i2 = ((mode & 1) == 0 ? 0 : n_past); i2 < ne2; i2++) {
             const int64_t p = ((mode & 1) == 0 ? n_past + i2 : i2);
             for (int64_t i1 = 0; i1 < ne1; i1++) {
-                if (ir++ < ir0) continue;
-                if (ir > ir1) break;
+                if (ir++ < ir0) {
+                    continue;
+                }
+                if (ir > ir1) {
+                    break;
+                }
 
                 float theta = (float) p;
 
@@ -10376,8 +10454,12 @@ static void ggml_compute_forward_rope_f16(
         for (int64_t i2 = ((mode & 1) == 0 ? 0 : n_past); i2 < ne2; i2++) {
             const int64_t p = ((mode & 1) == 0 ? n_past + i2 : i2);
             for (int64_t i1 = 0; i1 < ne1; i1++) {
-                if (ir++ < ir0) continue;
-                if (ir > ir1) break;
+                if (ir++ < ir0) {
+                    continue;
+                }
+                if (ir > ir1) {
+                    break;
+                }
 
                 float theta = (float) p;
 
@@ -10523,8 +10605,12 @@ static void ggml_compute_forward_rope_back_f32(
         for (int64_t i2 = ((mode & 1) == 0 ? 0 : n_past); i2 < ne2; i2++) {
             const int64_t p = ((mode & 1) == 0 ? n_past + i2 : i2);
             for (int64_t i1 = 0; i1 < ne1; i1++) {
-                if (ir++ < ir0) continue;
-                if (ir > ir1) break;
+                if (ir++ < ir0) {
+                    continue;
+                }
+                if (ir > ir1) {
+                    break;
+                }
 
                 float theta = (float) p;
 
@@ -10622,8 +10708,12 @@ static void ggml_compute_forward_rope_back_f16(
         for (int64_t i2 = ((mode & 1) == 0 ? 0 : n_past); i2 < ne2; i2++) {
             const int64_t p = ((mode & 1) == 0 ? n_past + i2 : i2);
             for (int64_t i1 = 0; i1 < ne1; i1++) {
-                if (ir++ < ir0) continue;
-                if (ir > ir1) break;
+                if (ir++ < ir0) {
+                    continue;
+                }
+                if (ir > ir1) {
+                    break;
+                }
 
                 float theta = (float) p;
 
@@ -11281,7 +11371,9 @@ static void ggml_compute_forward_pool_1d_sk_p0(
                 switch (op) {
                     case GGML_OP_POOL_AVG: drow[i] += srow[j]; break;
                     case GGML_OP_POOL_MAX:
-                        if (srow[j] > drow[i]) drow[i] = srow[j];
+                        if (srow[j] > drow[i]) {
+                            drow[i] = srow[j];
+                        }
                         break;
                     case GGML_OP_POOL_COUNT: GGML_ASSERT(false); break;
                 }
@@ -11366,7 +11458,9 @@ static void ggml_compute_forward_pool_2d_sk_p0(
                         switch (op) {
                             case GGML_OP_POOL_AVG: *out += srow[j]; break;
                             case GGML_OP_POOL_MAX:
-                                if (srow[j] > *out) *out = srow[j];
+                                if (srow[j] > *out) {
+                                    *out = srow[j];
+                                }
                                 break;
                             case GGML_OP_POOL_COUNT: GGML_ASSERT(false); break;
                         }
@@ -14236,7 +14330,9 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
         }
 
         // check if we should stop
-        if (node_n >= cgraph->n_nodes) break;
+        if (node_n >= cgraph->n_nodes) {
+            break;
+        }
 
         /* COMPUTE */
         struct ggml_tensor * node = cgraph->nodes[node_n];
