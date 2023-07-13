@@ -97,9 +97,6 @@ inline static void *ggml_aligned_malloc(size_t size) {
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-// floating point type used to accumulate sums
-typedef double ggml_float;
-
 #include <arm_neon.h>
 
 #define GGML_COMPUTE_FP16_TO_FP32(x) ((float)(x))
@@ -139,22 +136,6 @@ static float table_f32_f16[1 << 16];
 // precomputed tables for expanding 8bits to 8 bytes:
 static const uint64_t table_b2b_0[1 << 8] = {B8(00, 10)};  // ( b) << 4
 static const uint64_t table_b2b_1[1 << 8] = {B8(10, 00)};  // (!b) << 4
-
-// On ARM NEON, it's quicker to directly convert x -> x instead of calling into ggml_lookup_fp16_to_fp32,
-// so we define GGML_FP16_TO_FP32 and GGML_FP32_TO_FP16 elsewhere for NEON.
-// This is also true for POWER9.
-#if !defined(GGML_FP16_TO_FP32) || !defined(GGML_FP32_TO_FP16)
-
-inline static float ggml_lookup_fp16_to_fp32(ggml_fp16_t f) {
-  uint16_t s;
-  memcpy(&s, &f, sizeof(uint16_t));
-  return table_f32_f16[s];
-}
-
-#define GGML_FP16_TO_FP32(x) ggml_lookup_fp16_to_fp32(x)
-#define GGML_FP32_TO_FP16(x) GGML_COMPUTE_FP32_TO_FP16(x)
-
-#endif
 
 // note: do not use these inside ggml.c
 // these are meant to be used via the ggml.h API
@@ -908,7 +889,7 @@ ggml_type_traits_t ggml_internal_get_type_traits(enum ggml_type i) { return type
     }                                                           \
     const float32x4_t t0 = vcvt_f32_f16(vget_low_f16((x)[0]));  \
     const float32x4_t t1 = vcvt_f32_f16(vget_high_f16((x)[0])); \
-    (res) = (ggml_float)vaddvq_f32(vaddq_f32(t0, t1));          \
+    (res) = (double)vaddvq_f32(vaddq_f32(t0, t1));              \
   }
 
 #define GGML_F16_VEC GGML_F16x8
@@ -1035,7 +1016,7 @@ static void ggml_vec_dot_f32(const int n, float *restrict s, const float *restri
 }
 
 static void ggml_vec_dot_f16(const int n, float *restrict s, ggml_fp16_t *restrict x, ggml_fp16_t *restrict y) {
-  ggml_float sumf = 0.0;
+  double sumf = 0.0;
 
   const int np = (n & ~(GGML_F16_STEP - 1));
 
@@ -1058,7 +1039,7 @@ static void ggml_vec_dot_f16(const int n, float *restrict s, ggml_fp16_t *restri
 
   // leftovers
   for (int i = np; i < n; ++i) {
-    sumf += (ggml_float)(GGML_FP16_TO_FP32(x[i]) * GGML_FP16_TO_FP32(y[i]));
+    sumf += (double)(GGML_FP16_TO_FP32(x[i]) * GGML_FP16_TO_FP32(y[i]));
   }
 
   *s = sumf;
@@ -1367,7 +1348,7 @@ static void ggml_vec_dot_q8_0_q8_0(const int n, float *restrict s, const void *r
 // xs - x row stride in bytes
 inline static void ggml_vec_dot_f16_unroll(const int n, const int xs, float *restrict s, void *restrict xv,
                                            ggml_fp16_t *restrict y) {
-  ggml_float sumf[GGML_VEC_DOT_UNROLL] = {0.0};
+  double sumf[GGML_VEC_DOT_UNROLL] = {0.0};
 
   ggml_fp16_t *restrict x[GGML_VEC_DOT_UNROLL];
 
@@ -1402,7 +1383,7 @@ inline static void ggml_vec_dot_f16_unroll(const int n, const int xs, float *res
   // leftovers
   for (int i = np; i < n; ++i) {
     for (int j = 0; j < GGML_VEC_DOT_UNROLL; ++j) {
-      sumf[j] += (ggml_float)(GGML_FP16_TO_FP32(x[j][i]) * GGML_FP16_TO_FP32(y[i]));
+      sumf[j] += (double)(GGML_FP16_TO_FP32(x[j][i]) * GGML_FP16_TO_FP32(y[i]));
     }
   }
 
@@ -1573,10 +1554,10 @@ inline static void ggml_vec_silu_backward_f32(const int n, float *dx, const floa
 
 inline static void ggml_vec_sum_f32(const int n, float *s, const float *x) { vDSP_sve(x, 1, s, n); }
 
-inline static void ggml_vec_sum_ggf(const int n, ggml_float *s, const float *x) {
-  ggml_float sum = 0.0;
+inline static void ggml_vec_sum_ggf(const int n, double *s, const float *x) {
+  double sum = 0.0;
   for (int i = 0; i < n; ++i) {
-    sum += (ggml_float)x[i];
+    sum += (double)x[i];
   }
   *s = sum;
 }
@@ -6170,8 +6151,8 @@ static void ggml_compute_forward_sum_f32(const struct ggml_compute_params *param
   GGML_TENSOR_LOCALS(int64_t, ne0, src0, ne);
   GGML_TENSOR_LOCALS(size_t, nb0, src0, nb);
 
-  ggml_float sum = 0;
-  ggml_float row_sum = 0;
+  double sum = 0;
+  double row_sum = 0;
 
   for (int64_t i03 = 0; i03 < ne03; i03++) {
     for (int64_t i02 = 0; i02 < ne02; i02++) {
@@ -6782,20 +6763,20 @@ static void ggml_compute_forward_norm_f32(const struct ggml_compute_params *para
       for (int64_t i01 = ith; i01 < ne01; i01 += nth) {
         const float *x = (float *)((char *)src0->data + i01 * nb01 + i02 * nb02 + i03 * nb03);
 
-        ggml_float sum = 0.0;
+        double sum = 0.0;
         for (int64_t i00 = 0; i00 < ne00; i00++) {
-          sum += (ggml_float)x[i00];
+          sum += (double)x[i00];
         }
 
         float mean = sum / ne00;
 
         float *y = (float *)((char *)dst->data + i01 * nb1 + i02 * nb2 + i03 * nb3);
 
-        ggml_float sum2 = 0.0;
+        double sum2 = 0.0;
         for (int64_t i00 = 0; i00 < ne00; i00++) {
           float v = x[i00] - mean;
           y[i00] = v;
-          sum2 += (ggml_float)(v * v);
+          sum2 += (double)(v * v);
         }
 
         float variance = sum2 / ne00;
@@ -6837,9 +6818,9 @@ static void ggml_compute_forward_rms_norm_f32(const struct ggml_compute_params *
       for (int64_t i01 = ith; i01 < ne01; i01 += nth) {
         const float *x = (float *)((char *)src0->data + i01 * nb01 + i02 * nb02 + i03 * nb03);
 
-        ggml_float sum = 0.0;
+        double sum = 0.0;
         for (int64_t i00 = 0; i00 < ne00; i00++) {
-          sum += (ggml_float)(x[i00] * x[i00]);
+          sum += (double)(x[i00] * x[i00]);
         }
 
         const float mean = sum / ne00;
@@ -6893,12 +6874,12 @@ static void ggml_compute_forward_rms_norm_back_f32(const struct ggml_compute_par
         const float *x = (float *)((char *)src0->data + i01 * nb01 + i02 * nb02 + i03 * nb03);
         const float *dz = (float *)((char *)src1->data + i11 * nb11 + i12 * nb12 + i13 * nb13);
 
-        ggml_float sum_xx = 0.0;
-        ggml_float sum_xdz = 0.0;
+        double sum_xx = 0.0;
+        double sum_xdz = 0.0;
 
         for (int64_t i00 = 0; i00 < ne00; i00++) {
-          sum_xx += (ggml_float)(x[i00] * x[i00]);
-          sum_xdz += (ggml_float)(x[i00] * dz[i00]);
+          sum_xx += (double)(x[i00] * x[i00]);
+          sum_xdz += (double)(x[i00] * dz[i00]);
         }
 
         const float mean_eps = (float)(sum_xx) / ne00 + eps;
@@ -7711,7 +7692,7 @@ static void ggml_compute_forward_soft_max_f32(const struct ggml_compute_params *
     float max = -INFINITY;
     ggml_vec_max_f32(nc, &max, sp);
 
-    ggml_float sum = 0.0;
+    double sum = 0.0;
 
     uint16_t scvt;
     for (int i = 0; i < nc; i++) {
@@ -7722,7 +7703,7 @@ static void ggml_compute_forward_soft_max_f32(const struct ggml_compute_params *
         ggml_fp16_t s = sp[i] - max;
         memcpy(&scvt, &s, sizeof(scvt));
         const float val = GGML_FP16_TO_FP32(table_exp_f16[scvt]);
-        sum += (ggml_float)val;
+        sum += (double)val;
         dp[i] = val;
       }
     }
@@ -9165,7 +9146,7 @@ static void ggml_compute_forward_flash_attn_f32(const struct ggml_compute_params
       float max = -INFINITY;
       ggml_vec_max_f32(M, &max, S);
 
-      ggml_float sum = 0.0;
+      double sum = 0.0;
       {
 #ifdef GGML_SOFT_MAX_ACCELERATE
         max = -max;
@@ -9174,7 +9155,7 @@ static void ggml_compute_forward_flash_attn_f32(const struct ggml_compute_params
         ggml_vec_sum_f32(Mup, &sum, S);
 #else
         uint16_t scvt[GGML_SOFT_MAX_UNROLL];
-        ggml_float sump[GGML_SOFT_MAX_UNROLL] = {0.0};
+        double sump[GGML_SOFT_MAX_UNROLL] = {0.0};
 
         for (int i = 0; i < Mup; i += GGML_SOFT_MAX_UNROLL) {
           float *SS = S + i;
@@ -9186,7 +9167,7 @@ static void ggml_compute_forward_flash_attn_f32(const struct ggml_compute_params
               ggml_fp16_t s = SS[j] - max;
               memcpy(&scvt[j], &s, sizeof(uint16_t));
               const float val = GGML_FP16_TO_FP32(table_exp_f16[scvt[j]]);
-              sump[j] += (ggml_float)val;
+              sump[j] += (double)val;
               SS[j] = val;
             }
           }
@@ -9319,7 +9300,7 @@ static void ggml_compute_forward_flash_attn_f16(const struct ggml_compute_params
       float max = -INFINITY;
       ggml_vec_max_f32(M, &max, S);
 
-      ggml_float sum = 0.0;
+      double sum = 0.0;
       {
 #ifdef GGML_SOFT_MAX_ACCELERATE
         max = -max;
@@ -9328,7 +9309,7 @@ static void ggml_compute_forward_flash_attn_f16(const struct ggml_compute_params
         ggml_vec_sum_f32(Mup, &sum, S);
 #else
         uint16_t scvt[GGML_SOFT_MAX_UNROLL];
-        ggml_float sump[GGML_SOFT_MAX_UNROLL] = {0.0};
+        double sump[GGML_SOFT_MAX_UNROLL] = {0.0};
 
         for (int i = 0; i < Mup; i += GGML_SOFT_MAX_UNROLL) {
           float *SS = S + i;
@@ -9340,7 +9321,7 @@ static void ggml_compute_forward_flash_attn_f16(const struct ggml_compute_params
               ggml_fp16_t s = SS[j] - max;
               memcpy(&scvt[j], &s, sizeof(uint16_t));
               const float val = GGML_FP16_TO_FP32(table_exp_f16[scvt[j]]);
-              sump[j] += (ggml_float)val;
+              sump[j] += (double)val;
               SS[j] = val;
             }
           }
@@ -9621,7 +9602,7 @@ static void ggml_compute_forward_flash_attn_back_f32(const struct ggml_compute_p
         float max = -INFINITY;
         ggml_vec_max_f32(M, &max, S);
 
-        ggml_float sum = 0.0;
+        double sum = 0.0;
         {
 #ifdef GGML_SOFT_MAX_ACCELERATE
           max = -max;
@@ -9630,7 +9611,7 @@ static void ggml_compute_forward_flash_attn_back_f32(const struct ggml_compute_p
           ggml_vec_sum_f32(Mup, &sum, SM);
 #else
           uint16_t scvt[GGML_SOFT_MAX_UNROLL];
-          ggml_float sump[GGML_SOFT_MAX_UNROLL] = {0.0};
+          double sump[GGML_SOFT_MAX_UNROLL] = {0.0};
 
           for (int i = 0; i < Mup; i += GGML_SOFT_MAX_UNROLL) {
             float *SR = S + i;
@@ -9643,7 +9624,7 @@ static void ggml_compute_forward_flash_attn_back_f32(const struct ggml_compute_p
                 ggml_fp16_t s = SR[j] - max;
                 memcpy(&scvt[j], &s, sizeof(uint16_t));
                 const float val = GGML_FP16_TO_FP32(table_exp_f16[scvt[j]]);
-                sump[j] += (ggml_float)val;
+                sump[j] += (double)val;
                 SW[j] = val;
               }
             }
@@ -10104,7 +10085,7 @@ static void ggml_compute_forward_cross_entropy_loss_f32(const struct ggml_comput
     float *st = (float *)params->wdata + nth + ith * nc;
 
     // soft_max
-    ggml_float sum = 0.0;
+    double sum = 0.0;
     {
       float max = -INFINITY;
       ggml_vec_max_f32(nc, &max, s0);
@@ -10117,7 +10098,7 @@ static void ggml_compute_forward_cross_entropy_loss_f32(const struct ggml_comput
           ggml_fp16_t s = s0[i] - max;
           memcpy(&scvt, &s, sizeof(scvt));
           const float val = GGML_FP16_TO_FP32(table_exp_f16[scvt]);
-          sum += (ggml_float)val;
+          sum += (double)val;
           st[i] = val;
         }
       }
@@ -10230,7 +10211,7 @@ static void ggml_compute_forward_cross_entropy_loss_back_f32(const struct ggml_c
     }
 
     // soft_max
-    ggml_float sum = 0.0;
+    double sum = 0.0;
     {
       float max = -INFINITY;
       ggml_vec_max_f32(nc, &max, s0);
@@ -10244,7 +10225,7 @@ static void ggml_compute_forward_cross_entropy_loss_back_f32(const struct ggml_c
           ggml_fp16_t s = s0[i] - max;
           memcpy(&scvt, &s, sizeof(scvt));
           const float val = GGML_FP16_TO_FP32(table_exp_f16[scvt]);
-          sum += (ggml_float)val;
+          sum += (double)val;
           sm[i] = val;
         }
       }

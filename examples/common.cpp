@@ -550,7 +550,6 @@ struct llama_context_params llama_context_params_from_gpt_params(const gpt_param
   lparams.n_ctx = params.n_ctx;
   lparams.n_batch = params.n_batch;
   lparams.n_gpu_layers = params.n_gpu_layers;
-  lparams.main_gpu = params.main_gpu;
   memcpy(lparams.tensor_split, params.tensor_split, LLAMA_MAX_DEVICES * sizeof(float));
   lparams.low_vram = params.low_vram;
   lparams.seed = params.seed;
@@ -682,7 +681,10 @@ int put_codepoint(console_state &con_st, const char *utf8_codepoint, size_t leng
   }
 
   fputs("\033[6n", con_st.tty);  // Query cursor position
-  int x1, x2, y1, y2;
+  int x1;
+  int x2;
+  int y1;
+  int y2;
   int results = 0;
   results = fscanf(con_st.tty, "\033[%d;%dR", &y1, &x1);
 
@@ -737,7 +739,9 @@ void pop_back_utf8_char(std::string &line) {
 
   // Find the start of the last UTF-8 character (checking up to 4 bytes back)
   for (size_t i = 0; i < 3 && pos > 0; ++i, --pos) {
-    if ((line[pos] & 0xC0) != 0x80) break;  // Found the start of the character
+    if ((line[pos] & 0xC0) != 0x80) {
+      break;  // Found the start of the character
+    }
   }
   line.erase(pos);
 }
