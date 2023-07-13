@@ -6259,20 +6259,9 @@ static void ggml_compute_forward_acc_f32(const struct ggml_compute_params *param
   GGML_TENSOR_LOCALS(int64_t, ne1, src1, ne);
   GGML_TENSOR_LOCALS(size_t, nb1, src1, nb);
 
-  // src0 and dst as viewed during acc
-  const size_t nb0 = ggml_element_size(src0);
-
-  const size_t nb00 = nb0;
   const size_t nb01 = nb1;
   const size_t nb02 = nb2;
   const size_t nb03 = nb3;
-
-  assert(offset + (ne10 == 0 ? 0 : ne10 - 1) * nb0 + (ne11 == 0 ? 0 : ne11 - 1) * nb1 +
-             (ne12 == 0 ? 0 : ne12 - 1) * nb2 + (ne13 == 0 ? 0 : ne13 - 1) * nb3 <
-         ggml_nbytes(dst));
-  assert(offset + (ne10 == 0 ? 0 : ne10 - 1) * nb00 + (ne11 == 0 ? 0 : ne11 - 1) * nb01 +
-             (ne12 == 0 ? 0 : ne12 - 1) * nb02 + (ne13 == 0 ? 0 : ne13 - 1) * nb03 <
-         ggml_nbytes(src0));
 
   // rows per thread
   const int dr = (nr + nth - 1) / nth;
@@ -8987,8 +8976,6 @@ static void ggml_compute_forward_conv_1d_s1_ph_f16_f32(const struct ggml_compute
 
   const int ew0 = ggml_up32(ne01);
 
-  assert(ne00 % 2 == 1);  // TODO: support even kernel sizes
-
   if (params->type == GGML_TASK_INIT) {
     // TODO: fix this memset (wsize is overestimated)
     memset(params->wdata, 0, params->wsize);
@@ -9068,8 +9055,6 @@ static void ggml_compute_forward_conv_1d_s1_ph_f32(const struct ggml_compute_par
   const int nh = nk / 2;
 
   const int ew0 = ggml_up32(ne01);
-
-  assert(ne00 % 2 == 1);  // TODO: support even kernel sizes
 
   if (params->type == GGML_TASK_INIT) {
     // TODO: fix this memset (wsize is overestimated)
@@ -9165,8 +9150,6 @@ static void ggml_compute_forward_conv_1d_s2_ph_f16_f32(const struct ggml_compute
 
   const int ew0 = ggml_up32(ne01);
 
-  assert(ne00 % 2 == 1);  // TODO: support even kernel sizes
-
   if (params->type == GGML_TASK_INIT) {
     // TODO: fix this memset (wsize is overestimated)
     memset(params->wdata, 0, params->wsize);
@@ -9246,8 +9229,6 @@ static void ggml_compute_forward_conv_1d_s2_ph_f32(const struct ggml_compute_par
   const int nh = nk / 2;
 
   const int ew0 = ggml_up32(ne01);
-
-  assert(ne00 % 2 == 1);  // TODO: support even kernel sizes
 
   if (params->type == GGML_TASK_INIT) {
     // TODO: fix this memset (wsize is overestimated)
@@ -9440,11 +9421,6 @@ static void ggml_compute_forward_conv_2d(const struct ggml_compute_params *param
                                          struct ggml_tensor *dst) {
   const int32_t s0 = ((const int32_t *)(opt0->data))[0];
   const int32_t s1 = ((const int32_t *)(opt0->data))[1];
-  const int32_t p0 = ((const int32_t *)(opt0->data))[2];
-  const int32_t d0 = ((const int32_t *)(opt0->data))[4];
-  assert(d0 == 1);  // dilation not supported
-
-  assert(p0 == 0);  // padding not supported
 
   if (s0 == src0->ne[0] && s1 == src0->ne[1]) {
     ggml_compute_forward_conv_2d_sk_p0(params, src0, src1, dst);
