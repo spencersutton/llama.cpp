@@ -71,11 +71,11 @@ static void ggml_mpi_tensor_send(struct ggml_tensor* t, int mpi_rank_dst) {
       mpi_type = MPI_FLOAT;
       break;
     default:
-      GGML_ASSERT(false && "not implemented");
+      assert(false && "not implemented");
   }
 
   const int retval = MPI_Send(t->data, ggml_nelements(t), mpi_type, mpi_rank_dst, 0, MPI_COMM_WORLD);
-  GGML_ASSERT(retval == MPI_SUCCESS);
+  assert(retval == MPI_SUCCESS);
 }
 
 static void ggml_mpi_tensor_recv(struct ggml_tensor* t, int mpi_rank_src) {
@@ -89,14 +89,14 @@ static void ggml_mpi_tensor_recv(struct ggml_tensor* t, int mpi_rank_src) {
       mpi_type = MPI_FLOAT;
       break;
     default:
-      GGML_ASSERT(false && "not implemented");
+      assert(false && "not implemented");
   }
 
   MPI_Status status;
   UNUSED(status);
 
   const int retval = MPI_Recv(t->data, ggml_nelements(t), mpi_type, mpi_rank_src, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-  GGML_ASSERT(retval == MPI_SUCCESS);
+  assert(retval == MPI_SUCCESS);
 }
 
 // TODO: there are many improvements that can be done to this implementation
@@ -116,7 +116,7 @@ void ggml_mpi_graph_compute_pre(struct ggml_mpi_context* ctx_mpi, struct ggml_cg
     return;
   }
 
-  GGML_ASSERT(inp0 == gf->nodes[0]);
+  assert(inp0 == gf->nodes[0]);
 
   // distribute the compute graph into slices across the MPI nodes
   //

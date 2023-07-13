@@ -192,14 +192,6 @@
 
 #define GGML_UNUSED(x) (void)(x)
 
-#define GGML_ASSERT(x)                                                     \
-  do {                                                                     \
-    if (!(x)) {                                                            \
-      fprintf(stderr, "GGML_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
-      abort();                                                             \
-    }                                                                      \
-  } while (0)
-
 // used to copy the number of elements and stride in bytes of tensors into local variables.
 // main purpose is to reduce code duplication and improve readability.
 //

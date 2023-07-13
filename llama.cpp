@@ -675,7 +675,7 @@ struct llama_model_loader {
 
       // allocate temp buffer if not using mmap
       if (!use_mmap && lt.data == NULL) {
-        GGML_ASSERT(lt.ggml_tensor->backend != GGML_BACKEND_CPU);
+        assert(lt.ggml_tensor->backend != GGML_BACKEND_CPU);
         lt.data = (uint8_t *)malloc(ggml_nbytes(lt.ggml_tensor));
       }
 
@@ -1206,7 +1206,7 @@ static bool llama_eval_internal(llama_context &lctx, const llama_token *tokens, 
     inpL = ggml_get_rows(ctx0, model.tok_embeddings, inp_tokens);
   } else {
 #ifdef GGML_USE_MPI
-    GGML_ASSERT(false && "not implemented");
+    assert(false && "not implemented");
 #endif
 
     inpL = ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N);
@@ -2857,11 +2857,11 @@ int llama_apply_lora_from_file_internal(const struct llama_model &model, const c
       }
 
       ggml_tensor *loraA = lora_tensors[base_name + ".loraA"];
-      GGML_ASSERT(loraA->type == GGML_TYPE_F32);
+      assert(loraA->type == GGML_TYPE_F32);
       ggml_set_name(loraA, "loraA");
 
       ggml_tensor *loraB = lora_tensors[base_name + ".loraB"];
-      GGML_ASSERT(loraB->type == GGML_TYPE_F32);
+      assert(loraB->type == GGML_TYPE_F32);
       ggml_set_name(loraB, "loraB");
 
       if (base_t->ne[0] != loraA->ne[1] || base_t->ne[1] != loraB->ne[1]) {

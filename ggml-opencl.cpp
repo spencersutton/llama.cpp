@@ -2,6 +2,7 @@
 
 #include <array>
 #include <atomic>
+#include <cassert>
 #include <limits>
 #include <sstream>
 #include <vector>
@@ -1056,7 +1057,7 @@ void ggml_cl_init(void) {
       default_device = &selected_devices[0];
     }
 
-    GGML_ASSERT(n_selected_devices > 0);
+    assert(n_selected_devices > 0);
 
     if (default_device == NULL) {
       default_device = &selected_devices[0];
@@ -1357,7 +1358,7 @@ static cl_int ggml_cl_h2d_tensor_2d(cl_command_queue queue, cl_mem dst, size_t o
 }
 
 static void ggml_cl_mul_f32(const ggml_tensor *src0, const ggml_tensor *src1, ggml_tensor *dst) {
-  GGML_ASSERT(src1->backend == GGML_BACKEND_GPU);
+  assert(src1->backend == GGML_BACKEND_GPU);
   const int64_t ne00 = src0->ne[0];
   const int64_t ne01 = src0->ne[1];
   const int64_t ne02 = src0->ne[2];
@@ -1444,7 +1445,7 @@ static void ggml_cl_mul_f32(const ggml_tensor *src0, const ggml_tensor *src1, gg
 }
 
 void ggml_cl_mul(const struct ggml_tensor *src0, const struct ggml_tensor *src1, struct ggml_tensor *dst) {
-  GGML_ASSERT(src0->type == GGML_TYPE_F32 && src1->type == GGML_TYPE_F32 && dst->type == GGML_TYPE_F32);
+  assert(src0->type == GGML_TYPE_F32 && src1->type == GGML_TYPE_F32 && dst->type == GGML_TYPE_F32);
   ggml_cl_mul_f32(src0, src1, dst);
 }
 
@@ -1495,7 +1496,7 @@ static void ggml_cl_mul_mat_f32(const ggml_tensor *src0, const ggml_tensor *src1
                                   ne11, ne10, alpha, d_X, 0, ne00, d_Y, 0, ne10, beta, d_D, 0, ne01, &queue, &ev_sgemm);
 
       if (status != clblast::StatusCode::kSuccess) {
-        GGML_ASSERT(false);
+        assert(false);
       }
 
       // copy dst to host
@@ -1513,7 +1514,7 @@ static void ggml_cl_mul_mat_f32(const ggml_tensor *src0, const ggml_tensor *src1
 
 static void ggml_cl_mul_mat_f16(const ggml_tensor *src0, const ggml_tensor *src1, ggml_tensor *dst, void *wdata,
                                 size_t /* wsize */) {
-  GGML_ASSERT(fp16_support);
+  assert(fp16_support);
 
   const int64_t ne00 = src0->ne[0];
   const int64_t ne01 = src0->ne[1];
@@ -1592,7 +1593,7 @@ static void ggml_cl_mul_mat_f16(const ggml_tensor *src0, const ggml_tensor *src1
                                  ne11, ne10, alpha, d_X, 0, ne00, d_Y, 0, ne10, beta, d_D, 0, ne01, &queue, &ev_sgemm);
 
       if (status != clblast::StatusCode::kSuccess) {
-        GGML_ASSERT(false);
+        assert(false);
       }
 
       // copy dst to host, then convert to float
@@ -1649,7 +1650,7 @@ static void ggml_cl_mul_mat_q_f32(const ggml_tensor *src0, const ggml_tensor *sr
 
   cl_kernel *to_fp32_cl = ggml_get_to_fp32_cl(type);
   cl_kernel *dmmv = ggml_get_dequantize_mul_mat_vec_cl(type);
-  GGML_ASSERT(to_fp32_cl != nullptr);
+  assert(to_fp32_cl != nullptr);
 
   const size_t global_denom = ggml_cl_global_denom(type);
   const size_t local = ggml_cl_local_size(type);
@@ -1666,7 +1667,7 @@ static void ggml_cl_mul_mat_q_f32(const ggml_tensor *src0, const ggml_tensor *sr
       } else if (src0->backend == GGML_BACKEND_GPU) {
         d_Q = (cl_mem)src0->data;
       } else {
-        GGML_ASSERT(false);
+        assert(false);
       }
       if (mul_mat_vec) {  // specialized dequantize_mul_mat_vec kernel
         // copy src1 to device
@@ -1707,7 +1708,7 @@ static void ggml_cl_mul_mat_q_f32(const ggml_tensor *src0, const ggml_tensor *sr
             0, ne00, d_Y, 0, ne10, beta, d_D, 0, ne01, &queue, events.data() + ev_idx++);
 
         if (status != clblast::StatusCode::kSuccess) {
-          GGML_ASSERT(false);
+          assert(false);
         }
       }
 
@@ -1772,7 +1773,7 @@ bool ggml_cl_mul_mat_use_f16(const struct ggml_tensor *src0, const struct ggml_t
 
 void ggml_cl_mul_mat(const struct ggml_tensor *src0, const struct ggml_tensor *src1, struct ggml_tensor *dst,
                      void *wdata, size_t wsize) {
-  GGML_ASSERT(ggml_cl_can_mul_mat(src0, src1, dst));
+  assert(ggml_cl_can_mul_mat(src0, src1, dst));
 
   if (src0->type == GGML_TYPE_F32) {
     ggml_cl_mul_mat_f32(src0, src1, dst);
@@ -1785,7 +1786,7 @@ void ggml_cl_mul_mat(const struct ggml_tensor *src0, const struct ggml_tensor *s
   } else if (ggml_is_quantized(src0->type)) {
     ggml_cl_mul_mat_q_f32(src0, src1, dst);
   } else {
-    GGML_ASSERT(false);
+    assert(false);
   }
 }
 
@@ -1821,5 +1822,5 @@ void ggml_cl_transform_tensor(void *data, ggml_tensor *tensor) {
   CL_CHECK(clFinish(queue));
 
   tensor->data = dst;
-  GGML_ASSERT(tensor->backend == GGML_BACKEND_GPU);
+  assert(tensor->backend == GGML_BACKEND_GPU);
 }
