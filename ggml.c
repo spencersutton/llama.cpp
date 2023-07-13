@@ -1,6 +1,3 @@
-#define _GNU_SOURCE              // Defines CLOCK_MONOTONIC on Linux
-#define _CRT_SECURE_NO_DEPRECATE // Disables ridiculous "unsafe" warnigns on Windows
-
 #include "ggml.h"
 
 #ifdef GGML_USE_K_QUANTS
