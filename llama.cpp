@@ -13,13 +13,11 @@
 #ifdef GGML_USE_MPI
 #include "ggml-mpi.h"
 #endif
-#ifdef GGML_USE_K_QUANTS
 #ifndef QK_K
 #ifdef GGML_QKK_64
 #define QK_K 64
 #else
 #define QK_K 256
-#endif
 #endif
 #endif
 
@@ -2251,7 +2249,6 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
         case LLAMA_FTYPE_MOSTLY_F16: quantized_type = GGML_TYPE_F16; break;
         case LLAMA_FTYPE_ALL_F32: quantized_type = GGML_TYPE_F32; break;
 
-#ifdef GGML_USE_K_QUANTS
         // K-quants
         case LLAMA_FTYPE_MOSTLY_Q2_K: quantized_type = GGML_TYPE_Q2_K; break;
         case LLAMA_FTYPE_MOSTLY_Q3_K_S:
@@ -2262,7 +2259,6 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
         case LLAMA_FTYPE_MOSTLY_Q5_K_S:
         case LLAMA_FTYPE_MOSTLY_Q5_K_M: quantized_type = GGML_TYPE_Q5_K; break;
         case LLAMA_FTYPE_MOSTLY_Q6_K: quantized_type = GGML_TYPE_Q6_K; break;
-#endif
         default: throw std::runtime_error(format("invalid output file type %d\n", ftype));
     }
 
@@ -2273,7 +2269,6 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
     std::unique_ptr<llama_model_loader> model_loader(new llama_model_loader(fname_inp, /*use_mmap*/ false, /*has_lora*/ false));
     llama_file_saver file_saver(fname_out.c_str(), model_loader->file_loader.get(), params->ftype);
 
-#ifdef GGML_USE_K_QUANTS
     int n_attention_wv = 0;
     int n_feed_forward_w2 = 0;
     for (auto & tensor : model_loader->tensors_map.tensors) {
@@ -2286,7 +2281,6 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
 
     int i_attention_wv = 0;
     int i_feed_forward_w2 = 0;
-#endif
 
     size_t total_size_org = 0;
     size_t total_size_new = 0;
@@ -2331,7 +2325,6 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
             printf("size = %8.3f MB\n", tensor.size / 1024.0 / 1024.0);
         } else {
             new_type = quantized_type;
-#ifdef GGML_USE_K_QUANTS
             bool convert_incompatible_tensor = false;
             if (quantized_type == GGML_TYPE_Q2_K || quantized_type == GGML_TYPE_Q3_K || quantized_type == GGML_TYPE_Q4_K ||
                 quantized_type == GGML_TYPE_Q5_K || quantized_type == GGML_TYPE_Q6_K) {
@@ -2390,7 +2383,6 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
                     throw std::runtime_error("Unsupported tensor size encountered\n");
                 }
             }
-#endif
 
             float * f32_data;
             size_t nelements = tensor.ne.at(0) * tensor.ne.at(1);

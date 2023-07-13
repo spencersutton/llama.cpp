@@ -1,8 +1,6 @@
 #include "ggml.h"
 
-#ifdef GGML_USE_K_QUANTS
 #include "k_quants.h"
-#endif
 
 #include <alloca.h>
 
@@ -994,7 +992,6 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         .from_float_reference = (ggml_from_float_t) quantize_row_q8_1_reference,
         .vec_dot_type = GGML_TYPE_Q8_1,
     },
-#ifdef GGML_USE_K_QUANTS
     [GGML_TYPE_Q2_K] = {
         .to_float = (ggml_to_float_t) dequantize_row_q2_K,
         .from_float = quantize_row_q2_K,
@@ -1032,9 +1029,7 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
     },
     [GGML_TYPE_Q8_K] = {
         .from_float = quantize_row_q8_K,
-    }
-#endif
-};
+    }};
 
 // For internal test use
 ggml_type_traits_t ggml_internal_get_type_traits(enum ggml_type i) {
@@ -2135,14 +2130,12 @@ static const int GGML_BLCK_SIZE[GGML_TYPE_COUNT] = {
     [GGML_TYPE_Q5_1] = QK5_1,
     [GGML_TYPE_Q8_0] = QK8_0,
     [GGML_TYPE_Q8_1] = QK8_1,
-#ifdef GGML_USE_K_QUANTS
     [GGML_TYPE_Q2_K] = QK_K,
     [GGML_TYPE_Q3_K] = QK_K,
     [GGML_TYPE_Q4_K] = QK_K,
     [GGML_TYPE_Q5_K] = QK_K,
     [GGML_TYPE_Q6_K] = QK_K,
     [GGML_TYPE_Q8_K] = QK_K,
-#endif
     [GGML_TYPE_I8] = 1,
     [GGML_TYPE_I16] = 1,
     [GGML_TYPE_I32] = 1,
@@ -2158,14 +2151,12 @@ static const size_t GGML_TYPE_SIZE[GGML_TYPE_COUNT] = {
     [GGML_TYPE_Q5_1] = sizeof(block_q5_1),
     [GGML_TYPE_Q8_0] = sizeof(block_q8_0),
     [GGML_TYPE_Q8_1] = sizeof(block_q8_1),
-#ifdef GGML_USE_K_QUANTS
     [GGML_TYPE_Q2_K] = sizeof(block_q2_K),
     [GGML_TYPE_Q3_K] = sizeof(block_q3_K),
     [GGML_TYPE_Q4_K] = sizeof(block_q4_K),
     [GGML_TYPE_Q5_K] = sizeof(block_q5_K),
     [GGML_TYPE_Q6_K] = sizeof(block_q6_K),
     [GGML_TYPE_Q8_K] = sizeof(block_q8_K),
-#endif
     [GGML_TYPE_I8] = sizeof(int8_t),
     [GGML_TYPE_I16] = sizeof(int16_t),
     [GGML_TYPE_I32] = sizeof(int32_t),
@@ -16422,7 +16413,6 @@ size_t ggml_quantize_chunk(enum ggml_type type, const float * src, void * dst, i
             block_q8_0 * block = (block_q8_0 *) dst + start / QK8_0;
             result = ggml_quantize_q8_0(src + start, block, n, n, hist);
         } break;
-#ifdef GGML_USE_K_QUANTS
         case GGML_TYPE_Q2_K: {
             GGML_ASSERT(start % QK_K == 0);
             block_q2_K * block = (block_q2_K *) dst + start / QK_K;
@@ -16448,7 +16438,6 @@ size_t ggml_quantize_chunk(enum ggml_type type, const float * src, void * dst, i
             block_q6_K * block = (block_q6_K *) dst + start / QK_K;
             result = ggml_quantize_q6_K(src + start, block, n, n, hist);
         } break;
-#endif
         case GGML_TYPE_F16: {
             int elemsize = sizeof(ggml_fp16_t);
             ggml_fp32_to_fp16_row(src + start, (ggml_fp16_t *) dst + start, n);
