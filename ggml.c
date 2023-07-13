@@ -5003,8 +5003,8 @@ static int64_t ggml_calc_conv_output_size(int64_t ins, int64_t ks, int s, int p,
   return (ins + 2 * p - d * (ks - 1) - 1) / s + 1;
 }
 
-GGML_API struct ggml_tensor *ggml_conv_1d(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                          int s0, int p0, int d0) {
+struct ggml_tensor *ggml_conv_1d(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b, int s0, int p0,
+                                 int d0) {
   GGML_ASSERT(ggml_is_matrix(b));
   GGML_ASSERT(a->ne[1] == b->ne[1]);
   bool is_node = false;
@@ -14831,8 +14831,7 @@ struct ggml_opt_params ggml_opt_default_params(enum ggml_opt_type type) {
   return result;
 }
 
-GGML_API void ggml_opt_init(struct ggml_context *ctx, struct ggml_opt_context *opt, struct ggml_opt_params params,
-                            int64_t nx) {
+void ggml_opt_init(struct ggml_context *ctx, struct ggml_opt_context *opt, struct ggml_opt_params params, int64_t nx) {
   opt->ctx = ctx;
   opt->params = params;
   opt->iter = 0;

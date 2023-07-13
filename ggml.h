@@ -169,8 +169,6 @@
 //
 //
 
-#define GGML_API
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -238,11 +236,11 @@ typedef uint16_t ggml_fp16_t;
 #endif
 
 // convert FP16 <-> FP32
-GGML_API float ggml_fp16_to_fp32(ggml_fp16_t x);
-GGML_API ggml_fp16_t ggml_fp32_to_fp16(float x);
+float ggml_fp16_to_fp32(ggml_fp16_t x);
+ggml_fp16_t ggml_fp32_to_fp16(float x);
 
-GGML_API void ggml_fp16_to_fp32_row(const ggml_fp16_t *x, float *y, int n);
-GGML_API void ggml_fp32_to_fp16_row(const float *x, ggml_fp16_t *y, int n);
+void ggml_fp16_to_fp32_row(const ggml_fp16_t *x, float *y, int n);
+void ggml_fp32_to_fp16_row(const float *x, ggml_fp16_t *y, int n);
 
 struct ggml_object;
 struct ggml_context;
@@ -492,354 +490,348 @@ struct ggml_compute_params {
 
 // misc
 
-GGML_API void ggml_time_init(void);  // call this once at the beginning of the program
-GGML_API int64_t ggml_time_ms(void);
-GGML_API int64_t ggml_time_us(void);
-GGML_API int64_t ggml_cycles(void);
-GGML_API int64_t ggml_cycles_per_ms(void);
+void ggml_time_init(void);  // call this once at the beginning of the program
+int64_t ggml_time_ms(void);
+int64_t ggml_time_us(void);
+int64_t ggml_cycles(void);
+int64_t ggml_cycles_per_ms(void);
 
-GGML_API void ggml_numa_init(void);  // call once for better performance on NUMA systems
-GGML_API bool ggml_is_numa(void);    // true if init detected that system has >1 NUMA node
+void ggml_numa_init(void);  // call once for better performance on NUMA systems
+bool ggml_is_numa(void);    // true if init detected that system has >1 NUMA node
 
-GGML_API void ggml_print_object(const struct ggml_object *obj);
-GGML_API void ggml_print_objects(const struct ggml_context *ctx);
+void ggml_print_object(const struct ggml_object *obj);
+void ggml_print_objects(const struct ggml_context *ctx);
 
-GGML_API int64_t ggml_nelements(const struct ggml_tensor *tensor);
-GGML_API int64_t ggml_nrows(const struct ggml_tensor *tensor);
-GGML_API size_t ggml_nbytes(const struct ggml_tensor *tensor);
-GGML_API size_t ggml_nbytes_split(const struct ggml_tensor *tensor, int nrows_split);
+int64_t ggml_nelements(const struct ggml_tensor *tensor);
+int64_t ggml_nrows(const struct ggml_tensor *tensor);
+size_t ggml_nbytes(const struct ggml_tensor *tensor);
+size_t ggml_nbytes_split(const struct ggml_tensor *tensor, int nrows_split);
 
-GGML_API int ggml_blck_size(enum ggml_type type);
-GGML_API size_t ggml_type_size(enum ggml_type type);  // size in bytes for all elements in a block
-GGML_API float ggml_type_sizef(enum ggml_type type);  // ggml_type_size()/ggml_blck_size() as float
+int ggml_blck_size(enum ggml_type type);
+size_t ggml_type_size(enum ggml_type type);  // size in bytes for all elements in a block
+float ggml_type_sizef(enum ggml_type type);  // ggml_type_size()/ggml_blck_size() as float
 
-GGML_API const char *ggml_type_name(enum ggml_type type);
-GGML_API const char *ggml_op_name(enum ggml_op op);
+const char *ggml_type_name(enum ggml_type type);
+const char *ggml_op_name(enum ggml_op op);
 
-GGML_API size_t ggml_element_size(const struct ggml_tensor *tensor);
+size_t ggml_element_size(const struct ggml_tensor *tensor);
 
-GGML_API bool ggml_is_quantized(enum ggml_type type);
+bool ggml_is_quantized(enum ggml_type type);
 
 // TODO: temporary until model loading of ggml examples is refactored
-GGML_API enum ggml_type ggml_ftype_to_ggml_type(enum ggml_ftype ftype);
+enum ggml_type ggml_ftype_to_ggml_type(enum ggml_ftype ftype);
 
-GGML_API bool ggml_is_transposed(const struct ggml_tensor *tensor);
-GGML_API bool ggml_is_contiguous(const struct ggml_tensor *tensor);
-GGML_API bool ggml_is_permuted(const struct ggml_tensor *tensor);
+bool ggml_is_transposed(const struct ggml_tensor *tensor);
+bool ggml_is_contiguous(const struct ggml_tensor *tensor);
+bool ggml_is_permuted(const struct ggml_tensor *tensor);
 
 // use this to compute the memory overhead of a tensor
-GGML_API size_t ggml_tensor_overhead(void);
+size_t ggml_tensor_overhead(void);
 
 // main
 
-GGML_API struct ggml_context *ggml_init(struct ggml_init_params params);
-GGML_API void ggml_free(struct ggml_context *ctx);
+struct ggml_context *ggml_init(struct ggml_init_params params);
+void ggml_free(struct ggml_context *ctx);
 
-GGML_API size_t ggml_used_mem(const struct ggml_context *ctx);
+size_t ggml_used_mem(const struct ggml_context *ctx);
 
-GGML_API size_t ggml_set_scratch(struct ggml_context *ctx, struct ggml_scratch scratch);
-GGML_API void ggml_set_no_alloc(struct ggml_context *ctx, bool no_alloc);
+size_t ggml_set_scratch(struct ggml_context *ctx, struct ggml_scratch scratch);
+void ggml_set_no_alloc(struct ggml_context *ctx, bool no_alloc);
 
-GGML_API void *ggml_get_mem_buffer(const struct ggml_context *ctx);
-GGML_API size_t ggml_get_mem_size(const struct ggml_context *ctx);
-GGML_API size_t ggml_get_max_tensor_size(const struct ggml_context *ctx);
+void *ggml_get_mem_buffer(const struct ggml_context *ctx);
+size_t ggml_get_mem_size(const struct ggml_context *ctx);
+size_t ggml_get_max_tensor_size(const struct ggml_context *ctx);
 
-GGML_API struct ggml_tensor *ggml_new_tensor(struct ggml_context *ctx, enum ggml_type type, int n_dims,
-                                             const int64_t *ne);
+struct ggml_tensor *ggml_new_tensor(struct ggml_context *ctx, enum ggml_type type, int n_dims, const int64_t *ne);
 
-GGML_API struct ggml_tensor *ggml_new_tensor_1d(struct ggml_context *ctx, enum ggml_type type, int64_t ne0);
+struct ggml_tensor *ggml_new_tensor_1d(struct ggml_context *ctx, enum ggml_type type, int64_t ne0);
 
-GGML_API struct ggml_tensor *ggml_new_tensor_2d(struct ggml_context *ctx, enum ggml_type type, int64_t ne0,
-                                                int64_t ne1);
+struct ggml_tensor *ggml_new_tensor_2d(struct ggml_context *ctx, enum ggml_type type, int64_t ne0, int64_t ne1);
 
-GGML_API struct ggml_tensor *ggml_new_tensor_3d(struct ggml_context *ctx, enum ggml_type type, int64_t ne0, int64_t ne1,
-                                                int64_t ne2);
+struct ggml_tensor *ggml_new_tensor_3d(struct ggml_context *ctx, enum ggml_type type, int64_t ne0, int64_t ne1,
+                                       int64_t ne2);
 
-GGML_API struct ggml_tensor *ggml_new_tensor_4d(struct ggml_context *ctx, enum ggml_type type, int64_t ne0, int64_t ne1,
-                                                int64_t ne2, int64_t ne3);
+struct ggml_tensor *ggml_new_tensor_4d(struct ggml_context *ctx, enum ggml_type type, int64_t ne0, int64_t ne1,
+                                       int64_t ne2, int64_t ne3);
 
-GGML_API struct ggml_tensor *ggml_new_i32(struct ggml_context *ctx, int32_t value);
-GGML_API struct ggml_tensor *ggml_new_f32(struct ggml_context *ctx, float value);
+struct ggml_tensor *ggml_new_i32(struct ggml_context *ctx, int32_t value);
+struct ggml_tensor *ggml_new_f32(struct ggml_context *ctx, float value);
 
-GGML_API struct ggml_tensor *ggml_dup_tensor(struct ggml_context *ctx, const struct ggml_tensor *src);
-GGML_API struct ggml_tensor *ggml_view_tensor(struct ggml_context *ctx, const struct ggml_tensor *src);
+struct ggml_tensor *ggml_dup_tensor(struct ggml_context *ctx, const struct ggml_tensor *src);
+struct ggml_tensor *ggml_view_tensor(struct ggml_context *ctx, const struct ggml_tensor *src);
 
-GGML_API struct ggml_tensor *ggml_get_tensor(struct ggml_context *ctx, const char *name);
+struct ggml_tensor *ggml_get_tensor(struct ggml_context *ctx, const char *name);
 
-GGML_API struct ggml_tensor *ggml_set_zero(struct ggml_tensor *tensor);
-GGML_API struct ggml_tensor *ggml_set_i32(struct ggml_tensor *tensor, int32_t value);
-GGML_API struct ggml_tensor *ggml_set_f32(struct ggml_tensor *tensor, float value);
+struct ggml_tensor *ggml_set_zero(struct ggml_tensor *tensor);
+struct ggml_tensor *ggml_set_i32(struct ggml_tensor *tensor, int32_t value);
+struct ggml_tensor *ggml_set_f32(struct ggml_tensor *tensor, float value);
 
-GGML_API int32_t ggml_get_i32_1d(const struct ggml_tensor *tensor, int i);
-GGML_API void ggml_set_i32_1d(const struct ggml_tensor *tensor, int i, int32_t value);
+int32_t ggml_get_i32_1d(const struct ggml_tensor *tensor, int i);
+void ggml_set_i32_1d(const struct ggml_tensor *tensor, int i, int32_t value);
 
-GGML_API float ggml_get_f32_1d(const struct ggml_tensor *tensor, int i);
-GGML_API void ggml_set_f32_1d(const struct ggml_tensor *tensor, int i, float value);
+float ggml_get_f32_1d(const struct ggml_tensor *tensor, int i);
+void ggml_set_f32_1d(const struct ggml_tensor *tensor, int i, float value);
 
-GGML_API void *ggml_get_data(const struct ggml_tensor *tensor);
-GGML_API float *ggml_get_data_f32(const struct ggml_tensor *tensor);
+void *ggml_get_data(const struct ggml_tensor *tensor);
+float *ggml_get_data_f32(const struct ggml_tensor *tensor);
 
-GGML_API const char *ggml_get_name(const struct ggml_tensor *tensor);
-GGML_API struct ggml_tensor *ggml_set_name(struct ggml_tensor *tensor, const char *name);
-GGML_API struct ggml_tensor *ggml_format_name(struct ggml_tensor *tensor, const char *fmt, ...);
+const char *ggml_get_name(const struct ggml_tensor *tensor);
+struct ggml_tensor *ggml_set_name(struct ggml_tensor *tensor, const char *name);
+struct ggml_tensor *ggml_format_name(struct ggml_tensor *tensor, const char *fmt, ...);
 
 //
 // operations on tensors with backpropagation
 //
 
-GGML_API struct ggml_tensor *ggml_dup(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_dup(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_add(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_add(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_add_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_add_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_add1(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_add1(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_add1_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_add1_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_acc(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                      size_t nb1, size_t nb2, size_t nb3, size_t offset);
+struct ggml_tensor *ggml_acc(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b, size_t nb1,
+                             size_t nb2, size_t nb3, size_t offset);
 
-GGML_API struct ggml_tensor *ggml_acc_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                              size_t nb1, size_t nb2, size_t nb3, size_t offset);
+struct ggml_tensor *ggml_acc_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b, size_t nb1,
+                                     size_t nb2, size_t nb3, size_t offset);
 
-GGML_API struct ggml_tensor *ggml_sub(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_sub(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_sub_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_sub_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_mul(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_mul(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_mul_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_mul_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_div(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_div(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_div_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_div_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_sqr(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_sqr(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_sqr_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_sqr_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_sqrt(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_sqrt(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_sqrt_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_sqrt_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_log(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_log(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_log_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_log_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // return scalar
-GGML_API struct ggml_tensor *ggml_sum(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_sum(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // sums along rows, with input shape [a,b,c,d] return shape [1,b,c,d]
-GGML_API struct ggml_tensor *ggml_sum_rows(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_sum_rows(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // mean along rows
-GGML_API struct ggml_tensor *ggml_mean(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_mean(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // argmax along rows
-GGML_API struct ggml_tensor *ggml_argmax(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_argmax(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // if a is the same shape as b, and a is not parameter, return a
 // otherwise, return a new tensor: repeat(a) to fit in b
-GGML_API struct ggml_tensor *ggml_repeat(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_repeat(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_repeat_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_repeat_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_abs(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_abs(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_abs_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_abs_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_sgn(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_sgn(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_sgn_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_sgn_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_neg(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_neg(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_neg_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_neg_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_step(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_step(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_step_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_step_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_tanh(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_tanh(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_tanh_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_tanh_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_elu(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_elu(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_elu_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_elu_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_relu(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_relu(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_relu_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_relu_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // TODO: double-check this computation is correct
-GGML_API struct ggml_tensor *ggml_gelu(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_gelu(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_gelu_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_gelu_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_gelu_quick(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_gelu_quick(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_gelu_quick_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_gelu_quick_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_silu(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_silu(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_silu_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_silu_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // a - x
 // b - dy
-GGML_API struct ggml_tensor *ggml_silu_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_silu_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
 // normalize along rows
 // TODO: eps is hardcoded to 1e-5 for now
-GGML_API struct ggml_tensor *ggml_norm(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_norm(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_norm_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_norm_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_rms_norm(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_rms_norm(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_rms_norm_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_rms_norm_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // a - x
 // b - dy
-GGML_API struct ggml_tensor *ggml_rms_norm_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_rms_norm_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
 // A: n columns, m rows
 // B: n columns, p rows  (i.e. we transpose it internally)
 // result is m columns, p rows
-GGML_API struct ggml_tensor *ggml_mul_mat(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_mul_mat(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
 // A: m columns, n rows,
 // B: p columns, n rows,
 // result is m columns, p rows
-GGML_API struct ggml_tensor *ggml_out_prod(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_out_prod(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
 //
 // operations on tensors without backpropagation
 //
 
-GGML_API struct ggml_tensor *ggml_scale(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_scale(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
 // in-place, returns view(a)
-GGML_API struct ggml_tensor *ggml_scale_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_scale_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
 // b -> view(a,offset,nb1,nb2,3), return modified a
-GGML_API struct ggml_tensor *ggml_set(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                      size_t nb1, size_t nb2, size_t nb3, size_t offset);
+struct ggml_tensor *ggml_set(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b, size_t nb1,
+                             size_t nb2, size_t nb3, size_t offset);
 
 // b -> view(a,offset,nb1,nb2,3), return view(a)
-GGML_API struct ggml_tensor *ggml_set_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                              size_t nb1, size_t nb2, size_t nb3, size_t offset);
+struct ggml_tensor *ggml_set_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b, size_t nb1,
+                                     size_t nb2, size_t nb3, size_t offset);
 
-GGML_API struct ggml_tensor *ggml_set_1d(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                         size_t offset);
+struct ggml_tensor *ggml_set_1d(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b, size_t offset);
 
-GGML_API struct ggml_tensor *ggml_set_1d_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                                 size_t offset);
+struct ggml_tensor *ggml_set_1d_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                        size_t offset);
 
 // b -> view(a,offset,nb1,nb2,3), return modified a
-GGML_API struct ggml_tensor *ggml_set_2d(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                         size_t nb1, size_t offset);
+struct ggml_tensor *ggml_set_2d(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b, size_t nb1,
+                                size_t offset);
 
 // b -> view(a,offset,nb1,nb2,3), return view(a)
-GGML_API struct ggml_tensor *ggml_set_2d_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                                 size_t nb1, size_t offset);
+struct ggml_tensor *ggml_set_2d_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                        size_t nb1, size_t offset);
 
 // a -> b, return view(b)
-GGML_API struct ggml_tensor *ggml_cpy(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_cpy(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
 // make contiguous
-GGML_API struct ggml_tensor *ggml_cont(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_cont(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // return view(a), b specifies the new shape
 // TODO: when we start computing gradient, make a copy instead of view
-GGML_API struct ggml_tensor *ggml_reshape(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_reshape(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
 // return view(a)
 // TODO: when we start computing gradient, make a copy instead of view
-GGML_API struct ggml_tensor *ggml_reshape_1d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0);
+struct ggml_tensor *ggml_reshape_1d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0);
 
-GGML_API struct ggml_tensor *ggml_reshape_2d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1);
+struct ggml_tensor *ggml_reshape_2d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1);
 
 // return view(a)
 // TODO: when we start computing gradient, make a copy instead of view
-GGML_API struct ggml_tensor *ggml_reshape_3d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1,
-                                             int64_t ne2);
+struct ggml_tensor *ggml_reshape_3d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1,
+                                    int64_t ne2);
 
-GGML_API struct ggml_tensor *ggml_reshape_4d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1,
-                                             int64_t ne2, int64_t ne3);
+struct ggml_tensor *ggml_reshape_4d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1,
+                                    int64_t ne2, int64_t ne3);
 
 // offset in bytes
-GGML_API struct ggml_tensor *ggml_view_1d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, size_t offset);
+struct ggml_tensor *ggml_view_1d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, size_t offset);
 
-GGML_API struct ggml_tensor *ggml_view_2d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1,
-                                          size_t nb1,  // row stride in bytes
-                                          size_t offset);
+struct ggml_tensor *ggml_view_2d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1,
+                                 size_t nb1,  // row stride in bytes
+                                 size_t offset);
 
-GGML_API struct ggml_tensor *ggml_view_3d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1,
-                                          int64_t ne2,
-                                          size_t nb1,  // row   stride in bytes
-                                          size_t nb2,  // slice stride in bytes
-                                          size_t offset);
+struct ggml_tensor *ggml_view_3d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1, int64_t ne2,
+                                 size_t nb1,  // row   stride in bytes
+                                 size_t nb2,  // slice stride in bytes
+                                 size_t offset);
 
-GGML_API struct ggml_tensor *ggml_view_4d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1,
-                                          int64_t ne2, int64_t ne3,
-                                          size_t nb1,  // row   stride in bytes
-                                          size_t nb2,  // slice stride in bytes
-                                          size_t nb3, size_t offset);
+struct ggml_tensor *ggml_view_4d(struct ggml_context *ctx, struct ggml_tensor *a, int64_t ne0, int64_t ne1, int64_t ne2,
+                                 int64_t ne3,
+                                 size_t nb1,  // row   stride in bytes
+                                 size_t nb2,  // slice stride in bytes
+                                 size_t nb3, size_t offset);
 
-GGML_API struct ggml_tensor *ggml_permute(struct ggml_context *ctx, struct ggml_tensor *a, int axis0, int axis1,
-                                          int axis2, int axis3);
+struct ggml_tensor *ggml_permute(struct ggml_context *ctx, struct ggml_tensor *a, int axis0, int axis1, int axis2,
+                                 int axis3);
 
 // alias for ggml_permute(ctx, a, 1, 0, 2, 3)
-GGML_API struct ggml_tensor *ggml_transpose(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_transpose(struct ggml_context *ctx, struct ggml_tensor *a);
 
-GGML_API struct ggml_tensor *ggml_get_rows(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_get_rows(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_get_rows_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                                struct ggml_tensor *c);
+struct ggml_tensor *ggml_get_rows_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                       struct ggml_tensor *c);
 
-GGML_API struct ggml_tensor *ggml_diag(struct ggml_context *ctx, struct ggml_tensor *a);
+struct ggml_tensor *ggml_diag(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // set elements above the diagonal to -INF
-GGML_API struct ggml_tensor *ggml_diag_mask_inf(struct ggml_context *ctx, struct ggml_tensor *a, int n_past);
+struct ggml_tensor *ggml_diag_mask_inf(struct ggml_context *ctx, struct ggml_tensor *a, int n_past);
 
 // in-place, returns view(a)
-GGML_API struct ggml_tensor *ggml_diag_mask_inf_inplace(struct ggml_context *ctx, struct ggml_tensor *a, int n_past);
+struct ggml_tensor *ggml_diag_mask_inf_inplace(struct ggml_context *ctx, struct ggml_tensor *a, int n_past);
 
 // set elements above the diagonal to 0
-GGML_API struct ggml_tensor *ggml_diag_mask_zero(struct ggml_context *ctx, struct ggml_tensor *a, int n_past);
+struct ggml_tensor *ggml_diag_mask_zero(struct ggml_context *ctx, struct ggml_tensor *a, int n_past);
 
 // in-place, returns view(a)
-GGML_API struct ggml_tensor *ggml_diag_mask_zero_inplace(struct ggml_context *ctx, struct ggml_tensor *a, int n_past);
+struct ggml_tensor *ggml_diag_mask_zero_inplace(struct ggml_context *ctx, struct ggml_tensor *a, int n_past);
 
-GGML_API struct ggml_tensor *ggml_soft_max(struct ggml_context *ctx, struct ggml_tensor *a);
-
-// in-place, returns view(a)
-GGML_API struct ggml_tensor *ggml_soft_max_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
-
-GGML_API struct ggml_tensor *ggml_soft_max_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+struct ggml_tensor *ggml_soft_max(struct ggml_context *ctx, struct ggml_tensor *a);
 
 // in-place, returns view(a)
-GGML_API struct ggml_tensor *ggml_soft_max_back_inplace(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                        struct ggml_tensor *b);
+struct ggml_tensor *ggml_soft_max_inplace(struct ggml_context *ctx, struct ggml_tensor *a);
+
+struct ggml_tensor *ggml_soft_max_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
+
+// in-place, returns view(a)
+struct ggml_tensor *ggml_soft_max_back_inplace(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
 // rotary position embedding
 // if mode & 1 == 1, skip n_past elements
 // if mode & 2 == 1, GPT-NeoX style
 // if mode & 4 == 1, ChatGLM style
 // TODO: avoid creating a new tensor every time
-GGML_API struct ggml_tensor *ggml_rope(struct ggml_context *ctx, struct ggml_tensor *a, int n_past, int n_dims,
-                                       int mode, int n_ctx);
+struct ggml_tensor *ggml_rope(struct ggml_context *ctx, struct ggml_tensor *a, int n_past, int n_dims, int mode,
+                              int n_ctx);
 
 // in-place, returns view(a)
-GGML_API struct ggml_tensor *ggml_rope_inplace(struct ggml_context *ctx, struct ggml_tensor *a, int n_past, int n_dims,
-                                               int mode, int n_ctx);
+struct ggml_tensor *ggml_rope_inplace(struct ggml_context *ctx, struct ggml_tensor *a, int n_past, int n_dims, int mode,
+                                      int n_ctx);
 
 // rotary position embedding backward, i.e compute dx from dy
 // a - dy
-GGML_API struct ggml_tensor *ggml_rope_back(struct ggml_context *ctx, struct ggml_tensor *a, int n_past, int n_dims,
-                                            int mode);
+struct ggml_tensor *ggml_rope_back(struct ggml_context *ctx, struct ggml_tensor *a, int n_past, int n_dims, int mode);
 
 // alibi position embedding
 // in-place, returns view(a)
@@ -849,18 +841,18 @@ struct ggml_tensor *ggml_alibi(struct ggml_context *ctx, struct ggml_tensor *a, 
 // in-place, returns view(a)
 struct ggml_tensor *ggml_clamp(struct ggml_context *ctx, struct ggml_tensor *a, float min, float max);
 
-GGML_API struct ggml_tensor *ggml_conv_1d(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                          int s0,   // stride
-                                          int p0,   // padding
-                                          int d0);  // dilation
+struct ggml_tensor *ggml_conv_1d(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                 int s0,   // stride
+                                 int p0,   // padding
+                                 int d0);  // dilation
 
-GGML_API struct ggml_tensor *ggml_conv_2d(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                          int s0, int s1, int p0, int p1, int d0, int d1);
+struct ggml_tensor *ggml_conv_2d(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b, int s0, int s1,
+                                 int p0, int p1, int d0, int d1);
 
 // conv_1d with padding = half
 // alias for ggml_conv_1d(a, b, s, a->ne[0]/2, d)
-GGML_API struct ggml_tensor *ggml_conv_1d_ph(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                             int s, int d);
+struct ggml_tensor *ggml_conv_1d_ph(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b, int s,
+                                    int d);
 
 enum ggml_op_pool {
   GGML_OP_POOL_MAX,
@@ -868,23 +860,22 @@ enum ggml_op_pool {
   GGML_OP_POOL_COUNT,
 };
 
-GGML_API struct ggml_tensor *ggml_pool_1d(struct ggml_context *ctx, struct ggml_tensor *a, enum ggml_op_pool op,
-                                          int k0,   // kernel size
-                                          int s0,   // stride
-                                          int p0);  // padding
+struct ggml_tensor *ggml_pool_1d(struct ggml_context *ctx, struct ggml_tensor *a, enum ggml_op_pool op,
+                                 int k0,   // kernel size
+                                 int s0,   // stride
+                                 int p0);  // padding
 
-GGML_API struct ggml_tensor *ggml_pool_2d(struct ggml_context *ctx, struct ggml_tensor *a, enum ggml_op_pool op, int k0,
-                                          int k1, int s0, int s1, int p0, int p1);
+struct ggml_tensor *ggml_pool_2d(struct ggml_context *ctx, struct ggml_tensor *a, enum ggml_op_pool op, int k0, int k1,
+                                 int s0, int s1, int p0, int p1);
 
-GGML_API struct ggml_tensor *ggml_flash_attn(struct ggml_context *ctx, struct ggml_tensor *q, struct ggml_tensor *k,
-                                             struct ggml_tensor *v, bool masked);
+struct ggml_tensor *ggml_flash_attn(struct ggml_context *ctx, struct ggml_tensor *q, struct ggml_tensor *k,
+                                    struct ggml_tensor *v, bool masked);
 
-GGML_API struct ggml_tensor *ggml_flash_attn_back(struct ggml_context *ctx, struct ggml_tensor *q,
-                                                  struct ggml_tensor *k, struct ggml_tensor *v, struct ggml_tensor *d,
-                                                  bool masked);
+struct ggml_tensor *ggml_flash_attn_back(struct ggml_context *ctx, struct ggml_tensor *q, struct ggml_tensor *k,
+                                         struct ggml_tensor *v, struct ggml_tensor *d, bool masked);
 
-GGML_API struct ggml_tensor *ggml_flash_ff(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b0,
-                                           struct ggml_tensor *b1, struct ggml_tensor *c0, struct ggml_tensor *c1);
+struct ggml_tensor *ggml_flash_ff(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b0,
+                                  struct ggml_tensor *b1, struct ggml_tensor *c0, struct ggml_tensor *c1);
 
 // partition into non-overlapping windows with padding if needed
 // example:
@@ -892,11 +883,11 @@ GGML_API struct ggml_tensor *ggml_flash_ff(struct ggml_context *ctx, struct ggml
 // w:    14
 // res: 768   14   14    25
 // used in sam
-GGML_API struct ggml_tensor *ggml_win_part(struct ggml_context *ctx, struct ggml_tensor *a, int w);
+struct ggml_tensor *ggml_win_part(struct ggml_context *ctx, struct ggml_tensor *a, int w);
 
 // reverse of ggml_win_part
 // used in sam
-GGML_API struct ggml_tensor *ggml_win_unpart(struct ggml_context *ctx, struct ggml_tensor *a, int w0, int h0, int w);
+struct ggml_tensor *ggml_win_unpart(struct ggml_context *ctx, struct ggml_tensor *a, int w0, int h0, int w);
 
 // custom operators
 
@@ -908,78 +899,72 @@ typedef void (*ggml_custom2_op_f32_t)(struct ggml_tensor *, const struct ggml_te
 typedef void (*ggml_custom3_op_f32_t)(struct ggml_tensor *, const struct ggml_tensor *, const struct ggml_tensor *,
                                       const struct ggml_tensor *);
 
-GGML_API struct ggml_tensor *ggml_map_unary_f32(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                ggml_unary_op_f32_t fun);
+struct ggml_tensor *ggml_map_unary_f32(struct ggml_context *ctx, struct ggml_tensor *a, ggml_unary_op_f32_t fun);
 
-GGML_API struct ggml_tensor *ggml_map_unary_inplace_f32(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                        ggml_unary_op_f32_t fun);
+struct ggml_tensor *ggml_map_unary_inplace_f32(struct ggml_context *ctx, struct ggml_tensor *a,
+                                               ggml_unary_op_f32_t fun);
 
-GGML_API struct ggml_tensor *ggml_map_binary_f32(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
-                                                 ggml_binary_op_f32_t fun);
+struct ggml_tensor *ggml_map_binary_f32(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                        ggml_binary_op_f32_t fun);
 
-GGML_API struct ggml_tensor *ggml_map_binary_inplace_f32(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                         struct ggml_tensor *b, ggml_binary_op_f32_t fun);
+struct ggml_tensor *ggml_map_binary_inplace_f32(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                                ggml_binary_op_f32_t fun);
 
-GGML_API struct ggml_tensor *ggml_map_custom1_f32(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                  ggml_custom1_op_f32_t fun);
+struct ggml_tensor *ggml_map_custom1_f32(struct ggml_context *ctx, struct ggml_tensor *a, ggml_custom1_op_f32_t fun);
 
-GGML_API struct ggml_tensor *ggml_map_custom1_inplace_f32(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                          ggml_custom1_op_f32_t fun);
+struct ggml_tensor *ggml_map_custom1_inplace_f32(struct ggml_context *ctx, struct ggml_tensor *a,
+                                                 ggml_custom1_op_f32_t fun);
 
-GGML_API struct ggml_tensor *ggml_map_custom2_f32(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                  struct ggml_tensor *b, ggml_custom2_op_f32_t fun);
+struct ggml_tensor *ggml_map_custom2_f32(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                         ggml_custom2_op_f32_t fun);
 
-GGML_API struct ggml_tensor *ggml_map_custom2_inplace_f32(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                          struct ggml_tensor *b, ggml_custom2_op_f32_t fun);
+struct ggml_tensor *ggml_map_custom2_inplace_f32(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                                 ggml_custom2_op_f32_t fun);
 
-GGML_API struct ggml_tensor *ggml_map_custom3_f32(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                  struct ggml_tensor *b, struct ggml_tensor *c,
-                                                  ggml_custom3_op_f32_t fun);
+struct ggml_tensor *ggml_map_custom3_f32(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                         struct ggml_tensor *c, ggml_custom3_op_f32_t fun);
 
-GGML_API struct ggml_tensor *ggml_map_custom3_inplace_f32(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                          struct ggml_tensor *b, struct ggml_tensor *c,
-                                                          ggml_custom3_op_f32_t fun);
+struct ggml_tensor *ggml_map_custom3_inplace_f32(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                                 struct ggml_tensor *c, ggml_custom3_op_f32_t fun);
 
 // loss function
 
-GGML_API struct ggml_tensor *ggml_cross_entropy_loss(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                     struct ggml_tensor *b);
+struct ggml_tensor *ggml_cross_entropy_loss(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b);
 
-GGML_API struct ggml_tensor *ggml_cross_entropy_loss_back(struct ggml_context *ctx, struct ggml_tensor *a,
-                                                          struct ggml_tensor *b, struct ggml_tensor *c);
+struct ggml_tensor *ggml_cross_entropy_loss_back(struct ggml_context *ctx, struct ggml_tensor *a, struct ggml_tensor *b,
+                                                 struct ggml_tensor *c);
 
 //
 // automatic differentiation
 //
 
-GGML_API void ggml_set_param(struct ggml_context *ctx, struct ggml_tensor *tensor);
+void ggml_set_param(struct ggml_context *ctx, struct ggml_tensor *tensor);
 
-GGML_API void ggml_build_forward_expand(struct ggml_cgraph *cgraph, struct ggml_tensor *tensor);
+void ggml_build_forward_expand(struct ggml_cgraph *cgraph, struct ggml_tensor *tensor);
 
-GGML_API struct ggml_cgraph ggml_build_forward(struct ggml_tensor *tensor);
-GGML_API struct ggml_cgraph ggml_build_backward(struct ggml_context *ctx, struct ggml_cgraph *gf, bool keep);
+struct ggml_cgraph ggml_build_forward(struct ggml_tensor *tensor);
+struct ggml_cgraph ggml_build_backward(struct ggml_context *ctx, struct ggml_cgraph *gf, bool keep);
 
 // ggml_graph_plan() has to be called before ggml_graph_compute()
 // when plan.work_size > 0, caller must allocate memory for plan.work_data
-GGML_API struct ggml_cplan ggml_graph_plan(struct ggml_cgraph *cgraph, int n_threads /*= GGML_DEFAULT_N_THREADS*/);
-GGML_API int ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan);
-GGML_API void ggml_graph_reset(struct ggml_cgraph *cgraph);
+struct ggml_cplan ggml_graph_plan(struct ggml_cgraph *cgraph, int n_threads /*= GGML_DEFAULT_N_THREADS*/);
+int ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan);
+void ggml_graph_reset(struct ggml_cgraph *cgraph);
 
 // same as ggml_graph_compute() but the work data is allocated as a part of the context
 // note: the drawback of this API is that you must have ensured that the context has enough memory for the work data
-GGML_API void ggml_graph_compute_with_ctx(struct ggml_context *ctx, struct ggml_cgraph *cgraph, int n_threads);
+void ggml_graph_compute_with_ctx(struct ggml_context *ctx, struct ggml_cgraph *cgraph, int n_threads);
 
-GGML_API struct ggml_tensor *ggml_graph_get_tensor(struct ggml_cgraph *cgraph, const char *name);
+struct ggml_tensor *ggml_graph_get_tensor(struct ggml_cgraph *cgraph, const char *name);
 
-GGML_API void ggml_graph_export(const struct ggml_cgraph *cgraph, const char *fname);
-GGML_API struct ggml_cgraph ggml_graph_import(const char *fname, struct ggml_context **ctx_data,
-                                              struct ggml_context **ctx_eval);
+void ggml_graph_export(const struct ggml_cgraph *cgraph, const char *fname);
+struct ggml_cgraph ggml_graph_import(const char *fname, struct ggml_context **ctx_data, struct ggml_context **ctx_eval);
 
 // print info and performance information for the graph
-GGML_API void ggml_graph_print(const struct ggml_cgraph *cgraph);
+void ggml_graph_print(const struct ggml_cgraph *cgraph);
 
 // dump the graph into a file using the dot format
-GGML_API void ggml_graph_dump_dot(const struct ggml_cgraph *gb, const struct ggml_cgraph *gf, const char *filename);
+void ggml_graph_dump_dot(const struct ggml_cgraph *gb, const struct ggml_cgraph *gf, const char *filename);
 
 //
 // optimization
@@ -1117,56 +1102,54 @@ struct ggml_opt_context {
   } lbfgs;
 };
 
-GGML_API struct ggml_opt_params ggml_opt_default_params(enum ggml_opt_type type);
+struct ggml_opt_params ggml_opt_default_params(enum ggml_opt_type type);
 
 // optimize the function defined by the tensor f
-GGML_API enum ggml_opt_result ggml_opt(struct ggml_context *ctx, struct ggml_opt_params params, struct ggml_tensor *f);
+enum ggml_opt_result ggml_opt(struct ggml_context *ctx, struct ggml_opt_params params, struct ggml_tensor *f);
 
 // initialize optimizer context
-GGML_API void ggml_opt_init(struct ggml_context *ctx, struct ggml_opt_context *opt, struct ggml_opt_params params,
-                            int64_t nx);
+void ggml_opt_init(struct ggml_context *ctx, struct ggml_opt_context *opt, struct ggml_opt_params params, int64_t nx);
 
 // continue optimizing the function defined by the tensor f
-GGML_API enum ggml_opt_result ggml_opt_resume(struct ggml_context *ctx, struct ggml_opt_context *opt,
-                                              struct ggml_tensor *f);
+enum ggml_opt_result ggml_opt_resume(struct ggml_context *ctx, struct ggml_opt_context *opt, struct ggml_tensor *f);
 
 // continue optimizing the function defined by the tensor f
-GGML_API enum ggml_opt_result ggml_opt_resume_g(struct ggml_context *ctx, struct ggml_opt_context *opt,
-                                                struct ggml_tensor *f, struct ggml_cgraph *gf, struct ggml_cgraph *gb);
+enum ggml_opt_result ggml_opt_resume_g(struct ggml_context *ctx, struct ggml_opt_context *opt, struct ggml_tensor *f,
+                                       struct ggml_cgraph *gf, struct ggml_cgraph *gb);
 
 //
 // quantization
 //
 
-GGML_API size_t ggml_quantize_q4_0(const float *src, void *dst, int n, int k, int64_t *hist);
-GGML_API size_t ggml_quantize_q4_1(const float *src, void *dst, int n, int k, int64_t *hist);
-GGML_API size_t ggml_quantize_q5_0(const float *src, void *dst, int n, int k, int64_t *hist);
-GGML_API size_t ggml_quantize_q5_1(const float *src, void *dst, int n, int k, int64_t *hist);
-GGML_API size_t ggml_quantize_q8_0(const float *src, void *dst, int n, int k, int64_t *hist);
+size_t ggml_quantize_q4_0(const float *src, void *dst, int n, int k, int64_t *hist);
+size_t ggml_quantize_q4_1(const float *src, void *dst, int n, int k, int64_t *hist);
+size_t ggml_quantize_q5_0(const float *src, void *dst, int n, int k, int64_t *hist);
+size_t ggml_quantize_q5_1(const float *src, void *dst, int n, int k, int64_t *hist);
+size_t ggml_quantize_q8_0(const float *src, void *dst, int n, int k, int64_t *hist);
 
-GGML_API size_t ggml_quantize_chunk(enum ggml_type type, const float *src, void *dst, int start, int n, int64_t *hist);
+size_t ggml_quantize_chunk(enum ggml_type type, const float *src, void *dst, int start, int n, int64_t *hist);
 
 //
 // system info
 //
 
-GGML_API int ggml_cpu_has_avx(void);
-GGML_API int ggml_cpu_has_avx2(void);
-GGML_API int ggml_cpu_has_avx512(void);
-GGML_API int ggml_cpu_has_avx512_vbmi(void);
-GGML_API int ggml_cpu_has_avx512_vnni(void);
-GGML_API int ggml_cpu_has_fma(void);
-GGML_API int ggml_cpu_has_neon(void);
-GGML_API int ggml_cpu_has_arm_fma(void);
-GGML_API int ggml_cpu_has_f16c(void);
-GGML_API int ggml_cpu_has_fp16_va(void);
-GGML_API int ggml_cpu_has_wasm_simd(void);
-GGML_API int ggml_cpu_has_blas(void);
-GGML_API int ggml_cpu_has_cublas(void);
-GGML_API int ggml_cpu_has_clblast(void);
-GGML_API int ggml_cpu_has_gpublas(void);
-GGML_API int ggml_cpu_has_sse3(void);
-GGML_API int ggml_cpu_has_vsx(void);
+int ggml_cpu_has_avx(void);
+int ggml_cpu_has_avx2(void);
+int ggml_cpu_has_avx512(void);
+int ggml_cpu_has_avx512_vbmi(void);
+int ggml_cpu_has_avx512_vnni(void);
+int ggml_cpu_has_fma(void);
+int ggml_cpu_has_neon(void);
+int ggml_cpu_has_arm_fma(void);
+int ggml_cpu_has_f16c(void);
+int ggml_cpu_has_fp16_va(void);
+int ggml_cpu_has_wasm_simd(void);
+int ggml_cpu_has_blas(void);
+int ggml_cpu_has_cublas(void);
+int ggml_cpu_has_clblast(void);
+int ggml_cpu_has_gpublas(void);
+int ggml_cpu_has_sse3(void);
+int ggml_cpu_has_vsx(void);
 
 //
 // Internal types and functions exposed for tests and benchmarks
