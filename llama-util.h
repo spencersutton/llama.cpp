@@ -17,33 +17,33 @@
 #include <stdexcept>
 
 #ifdef __has_include
-    #if __has_include(<unistd.h>)
-        #include <unistd.h>
-        #if defined(_POSIX_MAPPED_FILES)
-            #include <sys/mman.h>
-        #endif
-        #if defined(_POSIX_MEMLOCK_RANGE)
-            #include <sys/resource.h>
-        #endif
-    #endif
+#if __has_include(<unistd.h>)
+#include <unistd.h>
+#if defined(_POSIX_MAPPED_FILES)
+#include <sys/mman.h>
+#endif
+#if defined(_POSIX_MEMLOCK_RANGE)
+#include <sys/resource.h>
+#endif
+#endif
 #endif
 
 #if defined(_WIN32)
-    #define WIN32_LEAN_AND_MEAN
-    #ifndef NOMINMAX
-        #define NOMINMAX
-    #endif
-    #include <windows.h>
-    #include <io.h>
-    #include <stdio.h> // for _fseeki64
+#define WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <io.h>
+#include <stdio.h> // for _fseeki64
 #endif
 
-#define LLAMA_ASSERT(x) \
-    do { \
-        if (!(x)) { \
+#define LLAMA_ASSERT(x)                                                           \
+    do {                                                                          \
+        if (!(x)) {                                                               \
             fprintf(stderr, "LLAMA_ASSERT: %s:%d: %s\n", __FILE__, __LINE__, #x); \
-            abort(); \
-        } \
+            abort();                                                              \
+        }                                                                         \
     } while (0)
 
 #ifdef __GNUC__
@@ -53,7 +53,8 @@ __attribute__((format(gnu_printf, 1, 2)))
 __attribute__((format(printf, 1, 2)))
 #endif
 #endif
-static std::string format(const char * fmt, ...) {
+static std::string
+format(const char * fmt, ...) {
     va_list ap, ap2;
     va_start(ap, fmt);
     va_copy(ap2, ap);
@@ -153,7 +154,7 @@ struct llama_file {
 static std::string llama_format_win_err(DWORD err) {
     LPSTR buf;
     size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                 NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&buf, 0, NULL);
+                                 NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR) &buf, 0, NULL);
     if (!size) {
         return "FormatMessageA failed";
     }
@@ -177,9 +178,13 @@ struct llama_mmap {
         int fd = fileno(file->fp);
         int flags = (has_lora) ? MAP_PRIVATE : MAP_SHARED;
         // prefetch/readahead impairs performance on NUMA systems
-        if (numa) { prefetch = 0; }
+        if (numa) {
+            prefetch = 0;
+        }
 #ifdef __linux__
-        if (prefetch) { flags |= MAP_POPULATE; }
+        if (prefetch) {
+            flags |= MAP_POPULATE;
+        }
 #endif
         addr = mmap(NULL, file->size, (has_lora) ? PROT_READ | PROT_WRITE : PROT_READ, flags, fd, 0);
         if (addr == MAP_FAILED) {
@@ -231,20 +236,20 @@ struct llama_mmap {
             throw std::runtime_error(format("MapViewOfFile failed: %s", llama_format_win_err(error).c_str()));
         }
 
-        #if _WIN32_WINNT >= _WIN32_WINNT_WIN8
+#if _WIN32_WINNT >= _WIN32_WINNT_WIN8
         if (prefetch) {
             // Advise the kernel to preload the mapped memory
             WIN32_MEMORY_RANGE_ENTRY range;
             range.VirtualAddress = addr;
-            range.NumberOfBytes = (SIZE_T)size;
+            range.NumberOfBytes = (SIZE_T) size;
             if (!PrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0)) {
                 fprintf(stderr, "warning: PrefetchVirtualMemory failed: %s\n",
                         llama_format_win_err(GetLastError()).c_str());
             }
         }
-        #else
-        #pragma message("warning: You are building for pre-Windows 8; prefetch not supported")
-        #endif // _WIN32_WINNT >= _WIN32_WINNT_WIN8
+#else
+#pragma message("warning: You are building for pre-Windows 8; prefetch not supported")
+#endif // _WIN32_WINNT >= _WIN32_WINNT_WIN8
     }
 
     ~llama_mmap() {
@@ -309,20 +314,20 @@ struct llama_mlock {
         return (size_t) sysconf(_SC_PAGESIZE);
     }
 
-    #ifdef __APPLE__
-        #define MLOCK_SUGGESTION \
-            "Try increasing the sysctl values 'vm.user_wire_limit' and 'vm.global_user_wire_limit' and/or " \
-            "decreasing 'vm.global_no_user_wire_amount'.  Also try increasing RLIMIT_MLOCK (ulimit -l).\n"
-    #else
-        #define MLOCK_SUGGESTION \
-            "Try increasing RLIMIT_MLOCK ('ulimit -l' as root).\n"
-    #endif
+#ifdef __APPLE__
+#define MLOCK_SUGGESTION                                                                            \
+    "Try increasing the sysctl values 'vm.user_wire_limit' and 'vm.global_user_wire_limit' and/or " \
+    "decreasing 'vm.global_no_user_wire_amount'.  Also try increasing RLIMIT_MLOCK (ulimit -l).\n"
+#else
+#define MLOCK_SUGGESTION \
+    "Try increasing RLIMIT_MLOCK ('ulimit -l' as root).\n"
+#endif
 
     bool raw_lock(const void * addr, size_t size) {
         if (!mlock(addr, size)) {
             return true;
         } else {
-            char* errmsg = std::strerror(errno);
+            char * errmsg = std::strerror(errno);
             bool suggest = (errno == ENOMEM);
 
             // Check if the resource limit is fine after all
@@ -338,7 +343,7 @@ struct llama_mlock {
         }
     }
 
-    #undef MLOCK_SUGGESTION
+#undef MLOCK_SUGGESTION
 
     void raw_unlock(void * addr, size_t size) {
         if (munlock(addr, size)) {
@@ -355,13 +360,13 @@ struct llama_mlock {
     }
 
     bool raw_lock(void * ptr, size_t len) {
-        for (int tries = 1; ; tries++) {
+        for (int tries = 1;; tries++) {
             if (VirtualLock(ptr, len)) {
                 return true;
             }
             if (tries == 2) {
                 fprintf(stderr, "warning: failed to VirtualLock %zu-byte buffer (after previously locking %zu bytes): %s\n",
-                    len, size, llama_format_win_err(GetLastError()).c_str());
+                        len, size, llama_format_win_err(GetLastError()).c_str());
                 return false;
             }
 
@@ -424,8 +429,7 @@ struct llama_buffer {
         int result = posix_memalign((void **) &addr, getpagesize(), len);
         if (result == 0) {
             memset(addr, 0, len);
-        }
-        else {
+        } else {
             addr = NULL;
         }
 #else
@@ -445,10 +449,10 @@ struct llama_buffer {
     }
 
     // disable copy and move
-    llama_buffer(const llama_buffer&) = delete;
-    llama_buffer(llama_buffer&&) = delete;
-    llama_buffer& operator=(const llama_buffer&) = delete;
-    llama_buffer& operator=(llama_buffer&&) = delete;
+    llama_buffer(const llama_buffer &) = delete;
+    llama_buffer(llama_buffer &&) = delete;
+    llama_buffer & operator=(const llama_buffer &) = delete;
+    llama_buffer & operator=(llama_buffer &&) = delete;
 };
 
 #ifdef GGML_USE_CUBLAS
@@ -466,8 +470,7 @@ struct llama_ctx_buffer {
         addr = (uint8_t *) ggml_cuda_host_malloc(size);
         if (addr) {
             is_cuda = true;
-        }
-        else {
+        } else {
             // fall back to pageable memory
             addr = new uint8_t[size];
             is_cuda = false;
@@ -479,8 +482,7 @@ struct llama_ctx_buffer {
         if (addr) {
             if (is_cuda) {
                 ggml_cuda_host_free(addr);
-            }
-            else {
+            } else {
                 delete[] addr;
             }
         }
@@ -492,10 +494,10 @@ struct llama_ctx_buffer {
     }
 
     // disable copy and move
-    llama_ctx_buffer(const llama_ctx_buffer&) = delete;
-    llama_ctx_buffer(llama_ctx_buffer&&) = delete;
-    llama_ctx_buffer& operator=(const llama_ctx_buffer&) = delete;
-    llama_ctx_buffer& operator=(llama_ctx_buffer&&) = delete;
+    llama_ctx_buffer(const llama_ctx_buffer &) = delete;
+    llama_ctx_buffer(llama_ctx_buffer &&) = delete;
+    llama_ctx_buffer & operator=(const llama_ctx_buffer &) = delete;
+    llama_ctx_buffer & operator=(llama_ctx_buffer &&) = delete;
 };
 #else
 typedef llama_buffer llama_ctx_buffer;

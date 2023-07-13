@@ -18,10 +18,10 @@
 #include <string>
 #include <vector>
 
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 #include <signal.h>
 #include <unistd.h>
-#elif defined (_WIN32)
+#elif defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -31,7 +31,7 @@
 #endif
 
 #if defined(_MSC_VER)
-#pragma warning(disable: 4244 4267) // possible loss of data
+#pragma warning(disable : 4244 4267) // possible loss of data
 #endif
 
 static console_state con_st;
@@ -39,11 +39,11 @@ static llama_context ** g_ctx;
 
 static bool is_interacting = false;
 
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__)) || defined (_WIN32)
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__)) || defined(_WIN32)
 void sigint_handler(int signo) {
     if (signo == SIGINT) {
         if (!is_interacting) {
-            is_interacting=true;
+            is_interacting = true;
         } else {
             console_cleanup(con_st);
             printf("\n");
@@ -85,8 +85,10 @@ int main(int argc, char ** argv) {
     }
 
     if (params.n_ctx > 2048) {
-        fprintf(stderr, "%s: warning: model might not support context sizes greater than 2048 tokens (%d specified);"
-                "expect poor results\n", __func__, params.n_ctx);
+        fprintf(stderr,
+                "%s: warning: model might not support context sizes greater than 2048 tokens (%d specified);"
+                "expect poor results\n",
+                __func__, params.n_ctx);
     } else if (params.n_ctx < 8) {
         fprintf(stderr, "%s: warning: minimum context size is 8, using minimum size.\n", __func__);
         params.n_ctx = 8;
@@ -140,7 +142,9 @@ int main(int argc, char ** argv) {
         }
 
         {
-            const std::vector<llama_token> tmp = { 0, };
+            const std::vector<llama_token> tmp = {
+                0,
+            };
             llama_eval(ctx, tmp.data(), tmp.size(), params.n_predict - 1, params.n_threads);
         }
 
@@ -208,7 +212,7 @@ int main(int argc, char ** argv) {
 
         std::vector<llama_token> original_inp = ::llama_tokenize(ctx, params.prompt, true);
         original_prompt_len = original_inp.size();
-        guidance_offset = (int)guidance_inp.size() - original_prompt_len;
+        guidance_offset = (int) guidance_inp.size() - original_prompt_len;
     }
 
     const int n_ctx = llama_n_ctx(ctx);
@@ -233,23 +237,23 @@ int main(int argc, char ** argv) {
             fprintf(stderr, "%s: session file has exact match for prompt!\n", __func__);
         } else if (n_matching_session_tokens < (embd_inp.size() / 2)) {
             fprintf(stderr, "%s: warning: session file has low similarity to prompt (%zu / %zu tokens); will mostly be reevaluated\n",
-                __func__, n_matching_session_tokens, embd_inp.size());
+                    __func__, n_matching_session_tokens, embd_inp.size());
         } else {
             fprintf(stderr, "%s: session file matches %zu / %zu tokens of prompt\n",
-                __func__, n_matching_session_tokens, embd_inp.size());
+                    __func__, n_matching_session_tokens, embd_inp.size());
         }
     }
 
     // if we will use the cache for the full prompt without reaching the end of the cache, force
     // reevaluation of the last token token to recalculate the cached logits
     if (!embd_inp.empty() && n_matching_session_tokens == embd_inp.size() &&
-            session_tokens.size() > embd_inp.size()) {
+        session_tokens.size() > embd_inp.size()) {
         session_tokens.resize(embd_inp.size() - 1);
     }
 
     // number of tokens to keep when resetting context
     if (params.n_keep < 0 || params.n_keep > (int) embd_inp.size() || params.instruct) {
-        params.n_keep = (int)embd_inp.size();
+        params.n_keep = (int) embd_inp.size();
     }
 
     // prefix & suffix for instruct mode
@@ -288,7 +292,7 @@ int main(int argc, char ** argv) {
         }
 
         if (params.n_keep > 0) {
-        fprintf(stderr, "%s: static prompt based on n_keep: '", __func__);
+            fprintf(stderr, "%s: static prompt based on n_keep: '", __func__);
             for (int i = 0; i < params.n_keep; i++) {
                 fprintf(stderr, "%s", llama_token_to_str(ctx, embd_inp[i]));
             }
@@ -298,13 +302,13 @@ int main(int argc, char ** argv) {
     }
 
     if (params.interactive) {
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
         struct sigaction sigint_action;
         sigint_action.sa_handler = sigint_handler;
-        sigemptyset (&sigint_action.sa_mask);
+        sigemptyset(&sigint_action.sa_mask);
         sigint_action.sa_flags = 0;
         sigaction(SIGINT, &sigint_action, NULL);
-#elif defined (_WIN32)
+#elif defined(_WIN32)
         auto console_ctrl_handler = +[](DWORD ctrl_type) -> BOOL {
             return (ctrl_type == CTRL_C_EVENT) ? (sigint_handler(SIGINT), true) : false;
         };
@@ -337,33 +341,37 @@ int main(int argc, char ** argv) {
     std::fill(last_n_tokens.begin(), last_n_tokens.end(), 0);
 
     if (params.interactive) {
-        const char *control_message;
+        const char * control_message;
         if (con_st.multiline_input) {
-            control_message = " - To return control to LLaMa, end your input with '\\'.\n"
-                              " - To return control without starting a new line, end your input with '/'.\n";
+            control_message =
+                " - To return control to LLaMa, end your input with '\\'.\n"
+                " - To return control without starting a new line, end your input with '/'.\n";
         } else {
-            control_message = " - Press Return to return control to LLaMa.\n"
-                              " - To return control without starting a new line, end your input with '/'.\n"
-                              " - If you want to submit another line, end your input with '\\'.\n";
+            control_message =
+                " - Press Return to return control to LLaMa.\n"
+                " - To return control without starting a new line, end your input with '/'.\n"
+                " - If you want to submit another line, end your input with '\\'.\n";
         }
-        fprintf(stderr, "== Running in interactive mode. ==\n"
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__)) || defined (_WIN32)
-               " - Press Ctrl+C to interject at any time.\n"
+        fprintf(stderr,
+                "== Running in interactive mode. ==\n"
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__)) || defined(_WIN32)
+                " - Press Ctrl+C to interject at any time.\n"
 #endif
-               "%s\n", control_message);
+                "%s\n",
+                control_message);
 
         is_interacting = params.interactive_first;
     }
 
-    bool is_antiprompt        = false;
-    bool input_echo           = true;
+    bool is_antiprompt = false;
+    bool input_echo = true;
     bool need_to_save_session = !path_session.empty() && n_matching_session_tokens < embd_inp.size();
 
-    int n_past             = 0;
-    int n_remain           = params.n_predict;
-    int n_consumed         = 0;
+    int n_past = 0;
+    int n_remain = params.n_predict;
+    int n_consumed = 0;
     int n_session_consumed = 0;
-    int n_past_guidance    = 0;
+    int n_past_guidance = 0;
 
     // the first thing we will do is to output the prompt, so set color accordingly
     console_set_color(con_st, CONSOLE_COLOR_PROMPT);
@@ -373,7 +381,9 @@ int main(int argc, char ** argv) {
 
     // do one empty run to warm up the model
     {
-        const std::vector<llama_token> tmp = { llama_token_bos(), };
+        const std::vector<llama_token> tmp = {
+            llama_token_bos(),
+        };
         llama_eval(ctx, tmp.data(), tmp.size(), 0, params.n_threads);
         llama_reset_timings(ctx);
     }
@@ -385,7 +395,7 @@ int main(int argc, char ** argv) {
             // --prompt or --file which uses the same value.
             auto max_embd_size = n_ctx - 4;
             // Ensure the input doesn't exceed the context size by truncating embd if necessary.
-            if ((int)embd.size() > max_embd_size) {
+            if ((int) embd.size() > max_embd_size) {
                 auto skipped_tokens = embd.size() - max_embd_size;
                 console_set_color(con_st, CONSOLE_COLOR_ERROR);
                 printf("<<input too long: skipped %zu token%s>>", skipped_tokens, skipped_tokens != 1 ? "s" : "");
@@ -406,7 +416,7 @@ int main(int argc, char ** argv) {
                 n_past_guidance = std::max(1, params.n_keep + guidance_offset);
 
                 // insert n_left/2 tokens at the start of embd from last_n_tokens
-                embd.insert(embd.begin(), last_n_tokens.begin() + n_ctx - n_left/2 - embd.size(), last_n_tokens.end() - embd.size());
+                embd.insert(embd.begin(), last_n_tokens.begin() + n_ctx - n_left / 2 - embd.size(), last_n_tokens.end() - embd.size());
 
                 // stop saving session if we run out of context
                 path_session.clear();
@@ -423,7 +433,7 @@ int main(int argc, char ** argv) {
             // try to reuse a matching prefix from the loaded session instead of re-eval (via n_past)
             if (n_session_consumed < (int) session_tokens.size()) {
                 size_t i = 0;
-                for ( ; i < embd.size(); i++) {
+                for (; i < embd.size(); i++) {
                     if (embd[i] != session_tokens[n_session_consumed]) {
                         session_tokens.resize(n_session_consumed);
                         break;
@@ -447,7 +457,7 @@ int main(int argc, char ** argv) {
 
             if (ctx_guidance) {
                 int input_size = 0;
-                llama_token* input_buf = NULL;
+                llama_token * input_buf = NULL;
 
                 if (n_past_guidance < (int) guidance_inp.size()) {
                     // Guidance context should have the same data with these modifications:
@@ -459,15 +469,14 @@ int main(int argc, char ** argv) {
                         embd_guidance.insert(
                             embd_guidance.end(),
                             embd.begin() + original_prompt_len,
-                            embd.end()
-                        );
+                            embd.end());
                     }
 
                     input_buf = embd_guidance.data();
                     input_size = embd_guidance.size();
                     //fprintf(stderr, "\n---------------------\n");
                     //for (int i = 0; i < (int) embd_guidance.size(); i++) {
-                        //fprintf(stderr, "%s", llama_token_to_str(ctx, embd_guidance[i]));
+                    //fprintf(stderr, "%s", llama_token_to_str(ctx, embd_guidance[i]));
                     //}
                     //fprintf(stderr, "\n---------------------\n");
                 } else {
@@ -509,19 +518,19 @@ int main(int argc, char ** argv) {
 
         if ((int) embd_inp.size() <= n_consumed && !is_interacting) {
             // out of user input, sample next token
-            const float   temp            = params.temp;
-            const int32_t top_k           = params.top_k <= 0 ? llama_n_vocab(ctx) : params.top_k;
-            const float   top_p           = params.top_p;
-            const float   tfs_z           = params.tfs_z;
-            const float   typical_p       = params.typical_p;
-            const int32_t repeat_last_n   = params.repeat_last_n < 0 ? n_ctx : params.repeat_last_n;
-            const float   repeat_penalty  = params.repeat_penalty;
-            const float   alpha_presence  = params.presence_penalty;
-            const float   alpha_frequency = params.frequency_penalty;
-            const int     mirostat        = params.mirostat;
-            const float   mirostat_tau    = params.mirostat_tau;
-            const float   mirostat_eta    = params.mirostat_eta;
-            const bool    penalize_nl     = params.penalize_nl;
+            const float temp = params.temp;
+            const int32_t top_k = params.top_k <= 0 ? llama_n_vocab(ctx) : params.top_k;
+            const float top_p = params.top_p;
+            const float tfs_z = params.tfs_z;
+            const float typical_p = params.typical_p;
+            const int32_t repeat_last_n = params.repeat_last_n < 0 ? n_ctx : params.repeat_last_n;
+            const float repeat_penalty = params.repeat_penalty;
+            const float alpha_presence = params.presence_penalty;
+            const float alpha_frequency = params.frequency_penalty;
+            const int mirostat = params.mirostat;
+            const float mirostat_tau = params.mirostat_tau;
+            const float mirostat_eta = params.mirostat_eta;
+            const bool penalize_nl = params.penalize_nl;
 
             // optionally save the session on first sample (for faster prompt loading next time)
             if (!path_session.empty() && need_to_save_session && !params.prompt_cache_ro) {
@@ -532,7 +541,7 @@ int main(int argc, char ** argv) {
             llama_token id = 0;
 
             {
-                auto logits  = llama_get_logits(ctx);
+                auto logits = llama_get_logits(ctx);
                 auto n_vocab = llama_n_vocab(ctx);
 
                 // Apply params.logit_bias map
@@ -546,7 +555,7 @@ int main(int argc, char ** argv) {
                     candidates.emplace_back(llama_token_data{token_id, logits[token_id], 0.0f});
                 }
 
-                llama_token_data_array candidates_p = { candidates.data(), candidates.size(), false };
+                llama_token_data_array candidates_p = {candidates.data(), candidates.size(), false};
 
                 if (ctx_guidance) {
                     llama_sample_classifier_free_guidance(ctx, &candidates_p, ctx_guidance, params.cfg_scale, params.cfg_smooth_factor);
@@ -554,13 +563,13 @@ int main(int argc, char ** argv) {
 
                 // Apply penalties
                 float nl_logit = logits[llama_token_nl()];
-                auto last_n_repeat = std::min(std::min((int)last_n_tokens.size(), repeat_last_n), n_ctx);
+                auto last_n_repeat = std::min(std::min((int) last_n_tokens.size(), repeat_last_n), n_ctx);
                 llama_sample_repetition_penalty(ctx, &candidates_p,
-                    last_n_tokens.data() + last_n_tokens.size() - last_n_repeat,
-                    last_n_repeat, repeat_penalty);
+                                                last_n_tokens.data() + last_n_tokens.size() - last_n_repeat,
+                                                last_n_repeat, repeat_penalty);
                 llama_sample_frequency_and_presence_penalties(ctx, &candidates_p,
-                    last_n_tokens.data() + last_n_tokens.size() - last_n_repeat,
-                    last_n_repeat, alpha_frequency, alpha_presence);
+                                                              last_n_tokens.data() + last_n_tokens.size() - last_n_repeat,
+                                                              last_n_repeat, alpha_frequency, alpha_presence);
                 if (!penalize_nl) {
                     logits[llama_token_nl()] = nl_logit;
                 }
@@ -633,13 +642,12 @@ int main(int argc, char ** argv) {
             fflush(stdout);
         }
         // reset color to default if we there is no pending user input
-        if (input_echo && (int)embd_inp.size() == n_consumed) {
+        if (input_echo && (int) embd_inp.size() == n_consumed) {
             console_set_color(con_st, CONSOLE_COLOR_DEFAULT);
         }
 
         // if not currently processing queued inputs;
         if ((int) embd_inp.size() <= n_consumed) {
-
             // check for reverse prompt
             if (params.antiprompt.size()) {
                 std::string last_output;
@@ -654,8 +662,8 @@ int main(int argc, char ** argv) {
                 for (std::string & antiprompt : params.antiprompt) {
                     size_t extra_padding = params.interactive ? 0 : 2;
                     size_t search_start_pos = last_output.length() > static_cast<size_t>(antiprompt.length() + extra_padding)
-                        ? last_output.length() - static_cast<size_t>(antiprompt.length() + extra_padding)
-                        : 0;
+                                                  ? last_output.length() - static_cast<size_t>(antiprompt.length() + extra_padding)
+                                                  : 0;
 
                     if (last_output.find(antiprompt.c_str(), search_start_pos) != std::string::npos) {
                         if (params.interactive) {
@@ -747,7 +755,9 @@ int main(int argc, char ** argv) {
     }
 
     llama_print_timings(ctx);
-    if (ctx_guidance) { llama_free(ctx_guidance); }
+    if (ctx_guidance) {
+        llama_free(ctx_guidance);
+    }
     llama_free(ctx);
     llama_free_model(model);
 

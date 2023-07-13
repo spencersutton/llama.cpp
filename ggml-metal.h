@@ -49,11 +49,11 @@ void ggml_metal_set_n_cb(struct ggml_metal_context * ctx, int n_cb);
 //   that it is guaranteed that the tensor will fit in at least one of the views
 //
 bool ggml_metal_add_buffer(
-        struct ggml_metal_context * ctx,
-                       const char * name,
-                             void * data,
-                           size_t   size,
-                           size_t   max_size);
+    struct ggml_metal_context * ctx,
+    const char * name,
+    void * data,
+    size_t size,
+    size_t max_size);
 
 // set data from host memory into the device
 void ggml_metal_set_tensor(struct ggml_metal_context * ctx, struct ggml_tensor * t);
@@ -68,4 +68,3 @@ void ggml_metal_graph_compute(struct ggml_metal_context * ctx, struct ggml_cgrap
 #ifdef __cplusplus
 }
 #endif
-

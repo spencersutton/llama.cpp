@@ -42,17 +42,17 @@ int ggml_mpi_rank(struct ggml_mpi_context * ctx) {
 }
 
 void ggml_mpi_eval_init(
-        struct ggml_mpi_context * ctx_mpi,
-                            int * n_tokens,
-                            int * n_past,
-                            int * n_threads) {
+    struct ggml_mpi_context * ctx_mpi,
+    int * n_tokens,
+    int * n_past,
+    int * n_threads) {
     UNUSED(ctx_mpi);
 
     // synchronize the worker node parameters with the root node
     MPI_Barrier(MPI_COMM_WORLD);
 
-    MPI_Bcast(n_tokens,  1, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(n_past,    1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(n_tokens, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(n_past, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(n_threads, 1, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
@@ -78,7 +78,7 @@ static void ggml_mpi_tensor_send(struct ggml_tensor * t, int mpi_rank_dst) {
 
     switch (t->type) {
         case GGML_TYPE_I32: mpi_type = MPI_INT32_T; break;
-        case GGML_TYPE_F32: mpi_type = MPI_FLOAT;   break;
+        case GGML_TYPE_F32: mpi_type = MPI_FLOAT; break;
         default: GGML_ASSERT(false && "not implemented");
     }
 
@@ -91,11 +91,12 @@ static void ggml_mpi_tensor_recv(struct ggml_tensor * t, int mpi_rank_src) {
 
     switch (t->type) {
         case GGML_TYPE_I32: mpi_type = MPI_INT32_T; break;
-        case GGML_TYPE_F32: mpi_type = MPI_FLOAT;   break;
+        case GGML_TYPE_F32: mpi_type = MPI_FLOAT; break;
         default: GGML_ASSERT(false && "not implemented");
     }
 
-    MPI_Status status; UNUSED(status);
+    MPI_Status status;
+    UNUSED(status);
 
     const int retval = MPI_Recv(t->data, ggml_nelements(t), mpi_type, mpi_rank_src, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
     GGML_ASSERT(retval == MPI_SUCCESS);
@@ -103,9 +104,9 @@ static void ggml_mpi_tensor_recv(struct ggml_tensor * t, int mpi_rank_src) {
 
 // TODO: there are many improvements that can be done to this implementation
 void ggml_mpi_graph_compute_pre(
-        struct ggml_mpi_context * ctx_mpi,
-             struct ggml_cgraph * gf,
-                            int   n_layers) {
+    struct ggml_mpi_context * ctx_mpi,
+    struct ggml_cgraph * gf,
+    int n_layers) {
     const int mpi_rank = ctx_mpi->rank;
     const int mpi_size = ctx_mpi->size;
 
@@ -155,7 +156,7 @@ void ggml_mpi_graph_compute_pre(
 
         const int mpi_idx = mpi_rank > 0 ? mpi_rank - 1 : mpi_size - 1;
 
-        const int il0 =               (mpi_idx + 0) * n_per_node;
+        const int il0 = (mpi_idx + 0) * n_per_node;
         const int il1 = MIN(n_layers, (mpi_idx + 1) * n_per_node);
 
         char name_l0[GGML_MAX_NAME];
@@ -164,7 +165,7 @@ void ggml_mpi_graph_compute_pre(
         snprintf(name_l0, sizeof(name_l0), "layer_inp_%d", il0);
         snprintf(name_l1, sizeof(name_l1), "layer_inp_%d", il1);
 
-        const int idx_l0 =                ggml_graph_get_node_idx(gf, name_l0);
+        const int idx_l0 = ggml_graph_get_node_idx(gf, name_l0);
         const int idx_l1 = mpi_rank > 0 ? ggml_graph_get_node_idx(gf, name_l1) + 1 : gf->n_nodes;
 
         if (idx_l0 < 0 || idx_l1 < 0) {
@@ -176,10 +177,10 @@ void ggml_mpi_graph_compute_pre(
         // TODO: not great - should be able to do this without modifying the compute graph (see next TODO below)
         for (int i = idx_l0; i < idx_l1; i++) {
             if (gf->nodes[i]->src[0] == gf->nodes[idx_l0]) {
-                gf->nodes[i]->src[0] =  inp0;
+                gf->nodes[i]->src[0] = inp0;
             }
             if (gf->nodes[i]->src[1] == gf->nodes[idx_l0]) {
-                gf->nodes[i]->src[1] =  inp0;
+                gf->nodes[i]->src[1] = inp0;
             }
         }
 
@@ -201,9 +202,9 @@ void ggml_mpi_graph_compute_pre(
 }
 
 void ggml_mpi_graph_compute_post(
-        struct ggml_mpi_context * ctx_mpi,
-             struct ggml_cgraph * gf,
-                            int   n_layers) {
+    struct ggml_mpi_context * ctx_mpi,
+    struct ggml_cgraph * gf,
+    int n_layers) {
     UNUSED(n_layers);
 
     const int mpi_rank = ctx_mpi->rank;
