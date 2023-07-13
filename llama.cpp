@@ -10,11 +10,6 @@
 #include "llama.h"
 
 #include "ggml.h"
-#ifdef GGML_USE_CUBLAS
-#include "ggml-cuda.h"
-#elif defined(GGML_USE_CLBLAST)
-#include "ggml-opencl.h"
-#endif
 
 #ifdef GGML_USE_METAL
 #include "ggml-metal.h"
@@ -51,10 +46,6 @@
 #include <mutex>
 #include <sstream>
 #include <numeric>
-
-#if defined(_MSC_VER)
-#pragma warning(disable : 4244 4267) // possible loss of data
-#endif
 
 #define LLAMA_USE_SCRATCH
 #define LLAMA_MAX_SCRATCH_BUFFERS 16
@@ -223,11 +214,6 @@ struct llama_kv_cache {
         if (ctx) {
             ggml_free(ctx);
         }
-
-#ifdef GGML_USE_CUBLAS
-        ggml_cuda_free_data(k);
-        ggml_cuda_free_data(v);
-#endif // GGML_USE_CUBLAS
     }
 };
 
@@ -282,17 +268,6 @@ struct llama_model {
         if (ctx) {
             ggml_free(ctx);
         }
-
-#ifdef GGML_USE_CUBLAS
-        for (size_t i = 0; i < tensors_by_name.size(); ++i) {
-            ggml_cuda_free_data(tensors_by_name[i].second);
-        }
-        ggml_cuda_free_scratch();
-#elif defined(GGML_USE_CLBLAST)
-        for (size_t i = 0; i < tensors_by_name.size(); ++i) {
-            ggml_cl_free_data(tensors_by_name[i].second);
-        }
-#endif
     }
 };
 
@@ -357,7 +332,6 @@ struct llama_context {
     size_t buf_max_size[LLAMA_MAX_SCRATCH_BUFFERS] = {0};
 
     void use_buf(struct ggml_context * ctx, int i) {
-#if defined(LLAMA_USE_SCRATCH)
         size_t last_size = 0;
 
         if (i == -1) {
@@ -380,19 +354,10 @@ struct llama_context {
         }
 
         buf_last = i;
-#else
-        (void) i;
-        (void) ctx;
-#endif
     }
 
     size_t get_buf_max_mem(int i) const {
-#if defined(LLAMA_USE_SCRATCH)
         return buf_max_size[i];
-#else
-        (void) i;
-        return 0;
-#endif
     }
 };
 
@@ -741,22 +706,6 @@ struct llama_model_loader {
                         lmlock->grow_to(lock_size);
                     }
                     break;
-#if defined(GGML_USE_CUBLAS)
-                case GGML_BACKEND_GPU:
-                case GGML_BACKEND_GPU_SPLIT:
-                    ggml_cuda_transform_tensor(lt.data, lt.ggml_tensor);
-                    if (!use_mmap) {
-                        free(lt.data);
-                    }
-                    break;
-#elif defined(GGML_USE_CLBLAST)
-                case GGML_BACKEND_GPU:
-                    ggml_cl_transform_tensor(lt.data, lt.ggml_tensor);
-                    if (!use_mmap) {
-                        free(lt.data);
-                    }
-                    break;
-#endif
                 default:
                     continue;
             }
@@ -827,14 +776,6 @@ static bool kv_cache_init(
     ggml_set_name(cache.v, "cache_v");
 
     (void) n_gpu_layers;
-#ifdef GGML_USE_CUBLAS
-    if (n_gpu_layers > n_layer + 1) {
-        ggml_cuda_assign_buffers_no_scratch(cache.v);
-    }
-    if (n_gpu_layers > n_layer + 2) {
-        ggml_cuda_assign_buffers_no_scratch(cache.k);
-    }
-#endif // GGML_USE_CUBLAS
 
     return true;
 }
@@ -1070,19 +1011,8 @@ static void llama_model_load_internal(
     }
 
     (void) main_gpu;
-#if defined(GGML_USE_CUBLAS)
-    fprintf(stderr, "%s: using CUDA for GPU acceleration\n", __func__);
-    ggml_cuda_set_main_device(main_gpu);
-#define LLAMA_BACKEND_OFFLOAD GGML_BACKEND_GPU
-#define LLAMA_BACKEND_OFFLOAD_SPLIT GGML_BACKEND_GPU_SPLIT
-#elif defined(GGML_USE_CLBLAST)
-    fprintf(stderr, "%s: using OpenCL for GPU acceleration\n", __func__);
-#define LLAMA_BACKEND_OFFLOAD GGML_BACKEND_GPU
-#define LLAMA_BACKEND_OFFLOAD_SPLIT GGML_BACKEND_GPU
-#else
 #define LLAMA_BACKEND_OFFLOAD GGML_BACKEND_CPU
 #define LLAMA_BACKEND_OFFLOAD_SPLIT GGML_BACKEND_CPU
-#endif
 
     // prepare memory for the weights
     size_t vram_weights = 0;
@@ -1103,11 +1033,7 @@ static void llama_model_load_internal(
             if (n_gpu_layers > int(n_layer)) { // NOLINT
                                                // norm is not performance relevant on its own but keeping it in VRAM reduces data copying
                                                // on Windows however this is detrimental unless everything is on the GPU
-#ifndef _WIN32
                 backend_norm = low_vram ? GGML_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD;
-#else
-                backend_norm = low_vram || n_gpu_layers <= (int) n_layer + 2 ? GGML_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD;
-#endif // _WIN32
 
                 backend_output = LLAMA_BACKEND_OFFLOAD_SPLIT;
             } else {
@@ -1181,63 +1107,8 @@ static void llama_model_load_internal(
 
         (void) vram_scratch;
         (void) n_batch;
-#ifdef GGML_USE_CUBLAS
-        if (low_vram) {
-            fprintf(stderr, "%s: not allocating a VRAM scratch buffer due to low VRAM option\n", __func__);
-            ggml_cuda_set_scratch_size(0); // disable scratch
-        } else {
-            const size_t vram_scratch_base = VRAM_REQ_SCRATCH_BASE().at(model.type);
-            const size_t vram_scratch_per_context = VRAM_REQ_SCRATCH_PER_CONTEXT().at(model.type);
-            vram_scratch = n_batch * (vram_scratch_base + n_ctx * vram_scratch_per_context);
-            ggml_cuda_set_scratch_size(vram_scratch);
-            if (n_gpu_layers > 0) {
-                fprintf(stderr, "%s: allocating batch_size x (%zd kB + n_ctx x %zd B) = %zd MB VRAM for the scratch buffer\n",
-                        __func__, vram_scratch_base / kB, vram_scratch_per_context,
-                        (vram_scratch + MB - 1) / MB); // round up
-            }
-        }
-#endif // GGML_USE_CUBLAS
 
-#if defined(GGML_USE_CUBLAS) || defined(GGML_USE_CLBLAST)
-        const int n_gpu = std::min(n_gpu_layers, int(hparams.n_layer));
-
-        fprintf(stderr, "%s: offloading %d repeating layers to GPU\n", __func__, n_gpu);
-        if (n_gpu_layers > (int) hparams.n_layer) {
-            fprintf(stderr, "%s: offloading non-repeating layers to GPU\n", __func__);
-        }
-        size_t vram_kv_cache = 0;
-
-#ifdef GGML_USE_CUBLAS
-        const int max_backend_supported_layers = hparams.n_layer + 3;
-        const int max_offloadable_layers = low_vram ? hparams.n_layer + 1 : hparams.n_layer + 3;
-        if (n_gpu_layers > (int) hparams.n_layer + 1) {
-            if (low_vram) {
-                fprintf(stderr, "%s: cannot offload v cache to GPU due to low VRAM option\n", __func__);
-            } else {
-                fprintf(stderr, "%s: offloading v cache to GPU\n", __func__);
-                vram_kv_cache += MEM_REQ_KV_SELF().at(model.type) / 2;
-            }
-        }
-        if (n_gpu_layers > (int) hparams.n_layer + 2) {
-            if (low_vram) {
-                fprintf(stderr, "%s: cannot offload k cache to GPU due to low VRAM option\n", __func__);
-            } else {
-                fprintf(stderr, "%s: offloading k cache to GPU\n", __func__);
-                vram_kv_cache += MEM_REQ_KV_SELF().at(model.type) / 2;
-            }
-        }
-#elif defined(GGML_USE_CLBLAST)
-        const int max_backend_supported_layers = hparams.n_layer + 1;
-        const int max_offloadable_layers = hparams.n_layer + 1;
-#endif // GGML_USE_CUBLAS
-
-        fprintf(stderr, "%s: offloaded %d/%d layers to GPU\n",
-                __func__, std::min(n_gpu_layers, max_offloadable_layers), max_backend_supported_layers);
-        fprintf(stderr, "%s: total VRAM used: %zu MB\n",
-                __func__, (vram_weights + vram_scratch + vram_kv_cache + MB - 1) / MB); // round up
-#else
         (void) n_gpu_layers;
-#endif // defined(GGML_USE_CUBLAS) || defined(GGML_USE_CLBLAST)
     }
 
     // populate `tensors_by_name`
@@ -1246,11 +1117,6 @@ static void llama_model_load_internal(
     }
 
     (void) tensor_split;
-#if defined(GGML_USE_CUBLAS)
-    {
-        ggml_cuda_set_tensor_split(tensor_split);
-    }
-#endif
 
     ml->load_all_data(progress_callback, progress_callback_user_data, use_mlock ? &model.mlock_mmap : NULL);
 
@@ -1381,28 +1247,10 @@ static bool llama_eval_internal(
     offload_func_t offload_func_kq = llama_nop;
     offload_func_t offload_func_v = llama_nop;
 
-#ifdef GGML_USE_CUBLAS
-    if (n_gpu_layers > n_layer) {
-        offload_func_nr = ggml_cuda_assign_buffers;
-    }
-    if (n_gpu_layers > n_layer + 1) {
-        offload_func_v = ggml_cuda_assign_buffers;
-    }
-    if (n_gpu_layers > n_layer + 2) {
-        offload_func_kq = ggml_cuda_assign_buffers;
-    }
-#endif // GGML_USE_CUBLAS
-
     for (int il = 0; il < n_layer; ++il) {
         ggml_format_name(inpL, "layer_inp_%d", il);
 
         offload_func_t offload_func = llama_nop;
-
-#ifdef GGML_USE_CUBLAS
-        if (il >= i_gpu_start) {
-            offload_func = ggml_cuda_assign_buffers;
-        }
-#endif // GGML_USE_CUBLAS
 
         struct ggml_tensor * inpSA = inpL;
 
@@ -1516,17 +1364,9 @@ static bool llama_eval_internal(
             offload_func_v(V);
             ggml_set_name(V, "V");
 
-#if 1
             struct ggml_tensor * KQV = ggml_mul_mat(ctx0, V, KQ_soft_max);
             offload_func_v(KQV);
             ggml_set_name(KQV, "KQV");
-#else
-            // make V contiguous in memory to speed up the matmul, however we waste time on the copy
-            // on M1 this is faster for the perplexity computation, but ~5% slower for the single-token generation
-            // is there a better way?
-            struct ggml_tensor * V_cont = ggml_cpy(ctx0, V, ggml_new_tensor_3d(ctx0, kv_self.v->type, n_past + N, n_embd / n_head, n_head));
-            struct ggml_tensor * KQV = ggml_mul_mat(ctx0, V_cont, KQ_soft_max);
-#endif
 
             // KQV_merged = KQV.permute(0, 2, 1, 3)
             struct ggml_tensor * KQV_merged = ggml_permute(ctx0, KQV, 0, 2, 1, 3);
@@ -1680,12 +1520,6 @@ static bool llama_eval_internal(
         ggml_graph_export(&gf, cgraph_fname);
     }
 
-#ifdef GGML_PERF
-    // print timing information per ggml operation (for debugging purposes)
-    // requires GGML_PERF to be defined
-    ggml_graph_print(&gf);
-#endif
-
     // plot the computation graph in dot format (for debugging purposes)
     //if (n_past%100 == 0) {
     //    ggml_graph_dump_dot(&gf, NULL, "llama.dot");
@@ -1716,13 +1550,6 @@ static bool llama_eval_internal(
     if (mem_per_token == 0) {
         mem_per_token = ggml_used_mem(ctx0) / N;
     }
-
-#if 0
-    printf("\n%s: used_mem = %.3f MB, scratch -- %.3f MB %.3f MB\n", __func__,
-            ggml_used_mem(ctx0)/1024.0/1024.0,
-            lctx.get_buf_max_mem(0)/1024.0/1024.0,
-            lctx.get_buf_max_mem(1)/1024.0/1024.0);
-#endif
 
     ggml_free(ctx0);
 
@@ -3013,17 +2840,6 @@ int llama_apply_lora_from_file_internal(const struct llama_model & model, const 
 
             offload_func_t offload_func = llama_nop;
             offload_func_t offload_func_force_inplace = llama_nop;
-
-#ifdef GGML_USE_CUBLAS
-            if (dest_t->backend == GGML_BACKEND_GPU || dest_t->backend == GGML_BACKEND_GPU_SPLIT) {
-                if (dest_t->type != GGML_TYPE_F16) {
-                    throw std::runtime_error(format(
-                        "%s: error: the simultaneous use of LoRAs and GPU acceleration is only supported for f16 models", __func__));
-                }
-                offload_func = ggml_cuda_assign_buffers;
-                offload_func_force_inplace = ggml_cuda_assign_buffers_force_inplace;
-            }
-#endif // GGML_USE_CUBLAS
 
             ggml_tensor * base_t;
             if (model_loader) {

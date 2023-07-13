@@ -21,17 +21,6 @@
 #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 #include <signal.h>
 #include <unistd.h>
-#elif defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#include <signal.h>
-#endif
-
-#if defined(_MSC_VER)
-#pragma warning(disable : 4244 4267) // possible loss of data
 #endif
 
 static console_state con_st;
@@ -308,11 +297,6 @@ int main(int argc, char ** argv) {
         sigemptyset(&sigint_action.sa_mask);
         sigint_action.sa_flags = 0;
         sigaction(SIGINT, &sigint_action, NULL);
-#elif defined(_WIN32)
-        auto console_ctrl_handler = +[](DWORD ctrl_type) -> BOOL {
-            return (ctrl_type == CTRL_C_EVENT) ? (sigint_handler(SIGINT), true) : false;
-        };
-        SetConsoleCtrlHandler(static_cast<PHANDLER_ROUTINE>(console_ctrl_handler), true);
 #endif
 
         fprintf(stderr, "%s: interactive mode on.\n", __func__);

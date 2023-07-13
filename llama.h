@@ -2,34 +2,15 @@
 #define LLAMA_H
 
 #include "ggml.h"
-#ifdef GGML_USE_CUBLAS
-#include "ggml-cuda.h"
-#define LLAMA_MAX_DEVICES GGML_CUDA_MAX_DEVICES
-#else
 #define LLAMA_MAX_DEVICES 1
-#endif // GGML_USE_CUBLAS
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifdef LLAMA_SHARED
-#if defined(_WIN32) && !defined(__MINGW32__)
-#ifdef LLAMA_BUILD
-#define LLAMA_API __declspec(dllexport)
-#else
-#define LLAMA_API __declspec(dllimport)
-#endif
-#else
-#define LLAMA_API __attribute__((visibility("default")))
-#endif
-#else
 #define LLAMA_API
-#endif
 
 #ifdef __GNUC__
 #define DEPRECATED(func, hint) func __attribute__((deprecated(hint)))
-#elif defined(_MSC_VER)
-#define DEPRECATED(func, hint) __declspec(deprecated(hint)) func
 #else
 #define DEPRECATED(func, hint) func
 #endif

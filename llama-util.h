@@ -28,16 +28,6 @@
 #endif
 #endif
 
-#if defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#include <io.h>
-#include <stdio.h> // for _fseeki64
-#endif
-
 #define LLAMA_ASSERT(x)                                                           \
     do {                                                                          \
         if (!(x)) {                                                               \
@@ -47,11 +37,7 @@
     } while (0)
 
 #ifdef __GNUC__
-#ifdef __MINGW32__
-__attribute__((format(gnu_printf, 1, 2)))
-#else
 __attribute__((format(printf, 1, 2)))
-#endif
 #endif
 static std::string
 format(const char * fmt, ...) {
@@ -84,21 +70,13 @@ struct llama_file {
     }
 
     size_t tell() const {
-#ifdef _WIN32
-        __int64 ret = _ftelli64(fp);
-#else
         long ret = std::ftell(fp);
-#endif
         LLAMA_ASSERT(ret != -1); // this really shouldn't fail
         return (size_t) ret;
     }
 
     void seek(size_t offset, int whence) {
-#ifdef _WIN32
-        int ret = _fseeki64(fp, (__int64) offset, whence);
-#else
         int ret = std::fseek(fp, (long) offset, whence);
-#endif
         LLAMA_ASSERT(ret == 0); // same
     }
 
@@ -150,20 +128,6 @@ struct llama_file {
     }
 };
 
-#if defined(_WIN32)
-static std::string llama_format_win_err(DWORD err) {
-    LPSTR buf;
-    size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                 NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR) &buf, 0, NULL);
-    if (!size) {
-        return "FormatMessageA failed";
-    }
-    std::string ret(buf, size);
-    LocalFree(buf);
-    return ret;
-}
-#endif
-
 struct llama_mmap {
     void * addr;
     size_t size;
@@ -181,11 +145,6 @@ struct llama_mmap {
         if (numa) {
             prefetch = 0;
         }
-#ifdef __linux__
-        if (prefetch) {
-            flags |= MAP_POPULATE;
-        }
-#endif
         addr = mmap(NULL, file->size, (has_lora) ? PROT_READ | PROT_WRITE : PROT_READ, flags, fd, 0);
         if (addr == MAP_FAILED) {
             throw std::runtime_error(format("mmap failed: %s", strerror(errno)));
@@ -210,53 +169,6 @@ struct llama_mmap {
 
     ~llama_mmap() {
         munmap(addr, size);
-    }
-#elif defined(_WIN32)
-    static constexpr bool SUPPORTED = true;
-
-    llama_mmap(struct llama_file * file, bool prefetch = true, bool numa = false) {
-        (void) numa;
-
-        size = file->size;
-
-        HANDLE hFile = (HANDLE) _get_osfhandle(_fileno(file->fp));
-
-        HANDLE hMapping = CreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
-        DWORD error = GetLastError();
-
-        if (hMapping == NULL) {
-            throw std::runtime_error(format("CreateFileMappingA failed: %s", llama_format_win_err(error).c_str()));
-        }
-
-        addr = MapViewOfFile(hMapping, FILE_MAP_COPY, 0, 0, 0);
-        error = GetLastError();
-        CloseHandle(hMapping);
-
-        if (addr == NULL) {
-            throw std::runtime_error(format("MapViewOfFile failed: %s", llama_format_win_err(error).c_str()));
-        }
-
-#if _WIN32_WINNT >= _WIN32_WINNT_WIN8
-        if (prefetch) {
-            // Advise the kernel to preload the mapped memory
-            WIN32_MEMORY_RANGE_ENTRY range;
-            range.VirtualAddress = addr;
-            range.NumberOfBytes = (SIZE_T) size;
-            if (!PrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0)) {
-                fprintf(stderr, "warning: PrefetchVirtualMemory failed: %s\n",
-                        llama_format_win_err(GetLastError()).c_str());
-            }
-        }
-#else
-#pragma message("warning: You are building for pre-Windows 8; prefetch not supported")
-#endif // _WIN32_WINNT >= _WIN32_WINNT_WIN8
-    }
-
-    ~llama_mmap() {
-        if (!UnmapViewOfFile(addr)) {
-            fprintf(stderr, "warning: UnmapViewOfFile failed: %s\n",
-                    llama_format_win_err(GetLastError()).c_str());
-        }
     }
 #else
     static constexpr bool SUPPORTED = false;
@@ -350,56 +262,6 @@ struct llama_mlock {
             fprintf(stderr, "warning: failed to munlock buffer: %s\n", std::strerror(errno));
         }
     }
-#elif defined(_WIN32)
-    static constexpr bool SUPPORTED = true;
-
-    size_t lock_granularity() {
-        SYSTEM_INFO si;
-        GetSystemInfo(&si);
-        return (size_t) si.dwPageSize;
-    }
-
-    bool raw_lock(void * ptr, size_t len) {
-        for (int tries = 1;; tries++) {
-            if (VirtualLock(ptr, len)) {
-                return true;
-            }
-            if (tries == 2) {
-                fprintf(stderr, "warning: failed to VirtualLock %zu-byte buffer (after previously locking %zu bytes): %s\n",
-                        len, size, llama_format_win_err(GetLastError()).c_str());
-                return false;
-            }
-
-            // It failed but this was only the first try; increase the working
-            // set size and try again.
-            SIZE_T min_ws_size, max_ws_size;
-            if (!GetProcessWorkingSetSize(GetCurrentProcess(), &min_ws_size, &max_ws_size)) {
-                fprintf(stderr, "warning: GetProcessWorkingSetSize failed: %s\n",
-                        llama_format_win_err(GetLastError()).c_str());
-                return false;
-            }
-            // Per MSDN: "The maximum number of pages that a process can lock
-            // is equal to the number of pages in its minimum working set minus
-            // a small overhead."
-            // Hopefully a megabyte is enough overhead:
-            size_t increment = len + 1048576;
-            // The minimum must be <= the maximum, so we need to increase both:
-            min_ws_size += increment;
-            max_ws_size += increment;
-            if (!SetProcessWorkingSetSize(GetCurrentProcess(), min_ws_size, max_ws_size)) {
-                fprintf(stderr, "warning: SetProcessWorkingSetSize failed: %s\n",
-                        llama_format_win_err(GetLastError()).c_str());
-                return false;
-            }
-        }
-    }
-
-    void raw_unlock(void * ptr, size_t len) {
-        if (!VirtualUnlock(ptr, len)) {
-            fprintf(stderr, "warning: failed to VirtualUnlock buffer: %s\n",
-                    llama_format_win_err(GetLastError()).c_str());
-        }
-    }
 #else
     static constexpr bool SUPPORTED = false;
 
@@ -455,52 +317,6 @@ struct llama_buffer {
     llama_buffer & operator=(llama_buffer &&) = delete;
 };
 
-#ifdef GGML_USE_CUBLAS
-#include "ggml-cuda.h"
-struct llama_ctx_buffer {
-    uint8_t * addr = NULL;
-    bool is_cuda;
-    size_t size = 0;
-
-    llama_ctx_buffer() = default;
-
-    void resize(size_t size) {
-        free();
-
-        addr = (uint8_t *) ggml_cuda_host_malloc(size);
-        if (addr) {
-            is_cuda = true;
-        } else {
-            // fall back to pageable memory
-            addr = new uint8_t[size];
-            is_cuda = false;
-        }
-        this->size = size;
-    }
-
-    void free() {
-        if (addr) {
-            if (is_cuda) {
-                ggml_cuda_host_free(addr);
-            } else {
-                delete[] addr;
-            }
-        }
-        addr = NULL;
-    }
-
-    ~llama_ctx_buffer() {
-        free();
-    }
-
-    // disable copy and move
-    llama_ctx_buffer(const llama_ctx_buffer &) = delete;
-    llama_ctx_buffer(llama_ctx_buffer &&) = delete;
-    llama_ctx_buffer & operator=(const llama_ctx_buffer &) = delete;
-    llama_ctx_buffer & operator=(llama_ctx_buffer &&) = delete;
-};
-#else
 typedef llama_buffer llama_ctx_buffer;
-#endif
 
 #endif

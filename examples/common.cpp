@@ -16,40 +16,12 @@
 #include <sys/sysctl.h>
 #endif
 
-#if defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
-#include <fcntl.h>
-#include <io.h>
-#else
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <wchar.h>
-#endif
-
-#if defined(_MSC_VER)
-#pragma warning(disable : 4244 4267) // possible loss of data
-#endif
 
 int32_t get_num_physical_cores() {
-#ifdef __linux__
-    // enumerate the set of thread siblings, num entries is num cores
-    std::unordered_set<std::string> siblings;
-    for (uint32_t cpu = 0; cpu < UINT32_MAX; ++cpu) {
-        std::ifstream thread_siblings("/sys/devices/system/cpu" + std::to_string(cpu) + "/topology/thread_siblings");
-        if (!thread_siblings.is_open()) {
-            break; // no more cpus
-        }
-        std::string line;
-        if (std::getline(thread_siblings, line)) {
-            siblings.insert(line);
-        }
-    }
-    if (siblings.size() > 0) {
-        return static_cast<int32_t>(siblings.size());
-    }
-#elif defined(__APPLE__) && defined(__MACH__)
+#if defined(__APPLE__) && defined(__MACH__)
     int32_t num_physical_cores;
     size_t len = sizeof(num_physical_cores);
     int result = sysctlbyname("hw.perflevel0.physicalcpu", &num_physical_cores, &len, NULL, 0);
@@ -60,8 +32,6 @@ int32_t get_num_physical_cores() {
     if (result == 0) {
         return num_physical_cores;
     }
-#elif defined(_WIN32)
-    //TODO: Implement
 #endif
     unsigned int n_threads = std::thread::hardware_concurrency();
     return n_threads > 0 ? (n_threads <= 4 ? n_threads : n_threads / 2) : 4;
@@ -322,41 +292,15 @@ bool gpt_params_parse(int argc, char ** argv, gpt_params & params) {
                 invalid_param = true;
                 break;
             }
-#ifdef GGML_USE_CUBLAS
-            params.main_gpu = std::stoi(argv[i]);
-#else
             fprintf(stderr, "warning: llama.cpp was compiled without cuBLAS. It is not possible to set a main GPU.\n");
-#endif
         } else if (arg == "--tensor-split" || arg == "-ts") {
             if (++i >= argc) {
                 invalid_param = true;
                 break;
             }
-#ifdef GGML_USE_CUBLAS
-            std::string arg_next = argv[i];
-
-            // split string by , and /
-            const std::regex regex{R"([,/]+)"};
-            std::sregex_token_iterator it{arg_next.begin(), arg_next.end(), regex, -1};
-            std::vector<std::string> split_arg{it, {}};
-            GGML_ASSERT(split_arg.size() <= LLAMA_MAX_DEVICES);
-
-            for (size_t i = 0; i < LLAMA_MAX_DEVICES; ++i) {
-                if (i < split_arg.size()) {
-                    params.tensor_split[i] = std::stof(split_arg[i]);
-                } else {
-                    params.tensor_split[i] = 0.0f;
-                }
-            }
-#else
             fprintf(stderr, "warning: llama.cpp was compiled without cuBLAS. It is not possible to set a tensor split.\n");
-#endif // GGML_USE_CUBLAS
         } else if (arg == "--low-vram" || arg == "-lv") {
-#ifdef GGML_USE_CUBLAS
-            params.low_vram = true;
-#else
             fprintf(stderr, "warning: llama.cpp was compiled without cuBLAS. It is not possible to set lower vram usage.\n");
-#endif // GGML_USE_CUBLAS
         } else if (arg == "--no-mmap") {
             params.use_mmap = false;
         } else if (arg == "--mtest") {
@@ -611,34 +555,6 @@ std::tuple<struct llama_model *, struct llama_context *> llama_init_from_gpt_par
 }
 
 void console_init(console_state & con_st) {
-#if defined(_WIN32)
-    // Windows-specific console initialization
-    DWORD dwMode = 0;
-    con_st.hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (con_st.hConsole == INVALID_HANDLE_VALUE || !GetConsoleMode(con_st.hConsole, &dwMode)) {
-        con_st.hConsole = GetStdHandle(STD_ERROR_HANDLE);
-        if (con_st.hConsole != INVALID_HANDLE_VALUE && (!GetConsoleMode(con_st.hConsole, &dwMode))) {
-            con_st.hConsole = NULL;
-        }
-    }
-    if (con_st.hConsole) {
-        // Enable ANSI colors on Windows 10+
-        if (con_st.use_color && !(dwMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
-            SetConsoleMode(con_st.hConsole, dwMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-        }
-        // Set console output codepage to UTF8
-        SetConsoleOutputCP(CP_UTF8);
-    }
-    HANDLE hConIn = GetStdHandle(STD_INPUT_HANDLE);
-    if (hConIn != INVALID_HANDLE_VALUE && GetConsoleMode(hConIn, &dwMode)) {
-        // Set console input codepage to UTF16
-        _setmode(_fileno(stdin), _O_WTEXT);
-
-        // Turn off ICANON (ENABLE_LINE_INPUT) and ECHO (ENABLE_ECHO_INPUT)
-        dwMode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
-        SetConsoleMode(hConIn, dwMode);
-    }
-#else
     // POSIX-specific console initialization
     struct termios new_termios;
     tcgetattr(STDIN_FILENO, &con_st.prev_state);
@@ -654,14 +570,12 @@ void console_init(console_state & con_st) {
     }
 
     setlocale(LC_ALL, "");
-#endif
 }
 
 void console_cleanup(console_state & con_st) {
     // Reset console color
     console_set_color(con_st, CONSOLE_COLOR_DEFAULT);
 
-#if !defined(_WIN32)
     if (con_st.tty != nullptr) {
         con_st.out = stdout;
         fclose(con_st.tty);
@@ -669,7 +583,6 @@ void console_cleanup(console_state & con_st) {
     }
     // Restore the terminal settings on POSIX systems
     tcsetattr(STDIN_FILENO, TCSANOW, &con_st.prev_state);
-#endif
 }
 
 /* Keep track of current color of output, and emit ANSI code if it changes. */
@@ -696,37 +609,6 @@ void console_set_color(console_state & con_st, console_color_t color) {
 }
 
 char32_t getchar32() {
-#if defined(_WIN32)
-    HANDLE hConsole = GetStdHandle(STD_INPUT_HANDLE);
-    wchar_t high_surrogate = 0;
-
-    while (true) {
-        INPUT_RECORD record;
-        DWORD count;
-        if (!ReadConsoleInputW(hConsole, &record, 1, &count) || count == 0) {
-            return WEOF;
-        }
-
-        if (record.EventType == KEY_EVENT && record.Event.KeyEvent.bKeyDown) {
-            wchar_t wc = record.Event.KeyEvent.uChar.UnicodeChar;
-            if (wc == 0) {
-                continue;
-            }
-
-            if ((wc >= 0xD800) && (wc <= 0xDBFF)) { // Check if wc is a high surrogate
-                high_surrogate = wc;
-                continue;
-            } else if ((wc >= 0xDC00) && (wc <= 0xDFFF)) { // Check if wc is a low surrogate
-                if (high_surrogate != 0) {                 // Check if we have a high surrogate
-                    return ((high_surrogate - 0xD800) << 10) + (wc - 0xDC00) + 0x10000;
-                }
-            }
-
-            high_surrogate = 0; // Reset the high surrogate
-            return static_cast<char32_t>(wc);
-        }
-    }
-#else
     wchar_t wc = getwchar();
     if (static_cast<wint_t>(wc) == WEOF) {
         return WEOF;
@@ -745,65 +627,17 @@ char32_t getchar32() {
 #endif
 
     return static_cast<char32_t>(wc);
-#endif
 }
 
 void pop_cursor(console_state & con_st) {
-#if defined(_WIN32)
-    if (con_st.hConsole != NULL) {
-        CONSOLE_SCREEN_BUFFER_INFO bufferInfo;
-        GetConsoleScreenBufferInfo(con_st.hConsole, &bufferInfo);
-
-        COORD newCursorPosition = bufferInfo.dwCursorPosition;
-        if (newCursorPosition.X == 0) {
-            newCursorPosition.X = bufferInfo.dwSize.X - 1;
-            newCursorPosition.Y -= 1;
-        } else {
-            newCursorPosition.X -= 1;
-        }
-
-        SetConsoleCursorPosition(con_st.hConsole, newCursorPosition);
-        return;
-    }
-#endif
     putc('\b', con_st.out);
 }
 
 int estimateWidth(char32_t codepoint) {
-#if defined(_WIN32)
-    return 1;
-#else
     return wcwidth(codepoint);
-#endif
 }
 
 int put_codepoint(console_state & con_st, const char * utf8_codepoint, size_t length, int expectedWidth) {
-#if defined(_WIN32)
-    CONSOLE_SCREEN_BUFFER_INFO bufferInfo;
-    if (!GetConsoleScreenBufferInfo(con_st.hConsole, &bufferInfo)) {
-        // go with the default
-        return expectedWidth;
-    }
-    COORD initialPosition = bufferInfo.dwCursorPosition;
-    DWORD nNumberOfChars = length;
-    WriteConsole(con_st.hConsole, utf8_codepoint, nNumberOfChars, &nNumberOfChars, NULL);
-
-    CONSOLE_SCREEN_BUFFER_INFO newBufferInfo;
-    GetConsoleScreenBufferInfo(con_st.hConsole, &newBufferInfo);
-
-    // Figure out our real position if we're in the last column
-    if (utf8_codepoint[0] != 0x09 && initialPosition.X == newBufferInfo.dwSize.X - 1) {
-        DWORD nNumberOfChars;
-        WriteConsole(con_st.hConsole, &" \b", 2, &nNumberOfChars, NULL);
-        GetConsoleScreenBufferInfo(con_st.hConsole, &newBufferInfo);
-    }
-
-    int width = newBufferInfo.dwCursorPosition.X - initialPosition.X;
-    if (width < 0) {
-        width += newBufferInfo.dwSize.X;
-    }
-    return width;
-#else
     // we can trust expectedWidth if we've got one
     if (expectedWidth >= 0 || con_st.tty == nullptr) {
         fwrite(utf8_codepoint, length, 1, con_st.out);
@@ -832,16 +666,10 @@ int put_codepoint(console_state & con_st, const char * utf8_codepoint, size_t le
         width += w.ws_col;
     }
     return width;
-#endif
 }
 
 void replace_last(console_state & con_st, char ch) {
-#if defined(_WIN32)
-    pop_cursor(con_st);
-    put_codepoint(con_st, &ch, 1, 1);
-#else
     fprintf(con_st.out, "\b%c", ch);
-#endif
 }
 
 void append_utf8(char32_t ch, std::string & out) {

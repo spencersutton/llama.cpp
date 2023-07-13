@@ -7,11 +7,7 @@
 #import <Metal/Metal.h>
 #import <MetalPerformanceShaders/MetalPerformanceShaders.h>
 
-#ifdef GGML_METAL_NDEBUG
 #define metal_printf(...)
-#else
-#define metal_printf(...) fprintf(stderr, __VA_ARGS__)
-#endif
 
 #define UNUSED(x) (void)(x)
 
@@ -106,18 +102,6 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
         GGML_ASSERT(false && "MPS not supported");
     }
 
-#if 0
-    // compile from source string and show compile log
-    {
-        NSError * error = nil;
-
-        ctx->library = [ctx->device newLibraryWithSource:msl_library_source options:nil error:&error];
-        if (error) {
-            fprintf(stderr, "%s: error: %s\n", __func__, [[error description] UTF8String]);
-            exit(1);
-        }
-    }
-#else
     UNUSED(msl_library_source);
 
     // read the source from "ggml-metal.metal" into a string and use newLibraryWithSource
@@ -147,7 +131,6 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
             exit(1);
         }
     }
-#endif
 
     // load kernels
     {
