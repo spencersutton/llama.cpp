@@ -2410,37 +2410,6 @@ const char *ggml_op_name(enum ggml_op op) { return GGML_OP_NAME[op]; }
 
 size_t ggml_element_size(const struct ggml_tensor *tensor) { return GGML_TYPE_SIZE[tensor->type]; }
 
-static inline bool ggml_is_scalar(const struct ggml_tensor *tensor) {
-  static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS is not 4 - update this function");
-
-  return tensor->ne[0] == 1 && tensor->ne[1] == 1 && tensor->ne[2] == 1 && tensor->ne[3] == 1;
-}
-
-static inline bool ggml_is_vector(const struct ggml_tensor *tensor) {
-  static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS is not 4 - update this function");
-
-  return tensor->ne[1] == 1 && tensor->ne[2] == 1 && tensor->ne[3] == 1;
-}
-
-static inline bool ggml_is_matrix(const struct ggml_tensor *tensor) {
-  static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS is not 4 - update this function");
-
-  return tensor->ne[2] == 1 && tensor->ne[3] == 1;
-}
-
-static inline bool ggml_can_mul_mat(const struct ggml_tensor *t0, const struct ggml_tensor *t1) {
-  static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS is not 4 - update this function");
-
-  return (t0->ne[0] == t1->ne[0]) && (t1->ne[2] % t0->ne[2] == 0) &&  // verify t0 is broadcastable
-         (t1->ne[3] % t0->ne[3] == 0);
-}
-
-static inline bool ggml_can_out_prod(const struct ggml_tensor *t0, const struct ggml_tensor *t1) {
-  static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS is not 4 - update this function");
-
-  return (t0->ne[1] == t1->ne[1]) && (t0->ne[2] == t1->ne[2]) && (t0->ne[3] == t1->ne[3]);
-}
-
 bool ggml_is_quantized(enum ggml_type type) { return GGML_IS_QUANTIZED[type]; }
 
 enum ggml_type ggml_ftype_to_ggml_type(enum ggml_ftype ftype) {
@@ -2484,8 +2453,6 @@ enum ggml_type ggml_ftype_to_ggml_type(enum ggml_ftype ftype) {
       wtype = GGML_TYPE_Q6_K;
       break;
     case GGML_FTYPE_UNKNOWN:
-      wtype = GGML_TYPE_COUNT;
-      break;
     case GGML_FTYPE_MOSTLY_Q4_1_SOME_F16:
       wtype = GGML_TYPE_COUNT;
       break;
@@ -2512,44 +2479,15 @@ bool ggml_is_permuted(const struct ggml_tensor *tensor) {
   return tensor->nb[0] > tensor->nb[1] || tensor->nb[1] > tensor->nb[2] || tensor->nb[2] > tensor->nb[3];
 }
 
-static inline bool ggml_is_padded_1d(const struct ggml_tensor *tensor) {
-  static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS is not 4 - update this function");
-
-  return tensor->nb[0] == GGML_TYPE_SIZE[tensor->type] && tensor->nb[2] == tensor->nb[1] * tensor->ne[1] &&
-         tensor->nb[3] == tensor->nb[2] * tensor->ne[2];
-}
-
 static inline bool ggml_are_same_shape(const struct ggml_tensor *t0, const struct ggml_tensor *t1) {
   static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS is not 4 - update this function");
 
   return (t0->ne[0] == t1->ne[0]) && (t0->ne[1] == t1->ne[1]) && (t0->ne[2] == t1->ne[2]) && (t0->ne[3] == t1->ne[3]);
 }
 
-// check if t1 can be represented as a repeatition of t0
-static inline bool ggml_can_repeat(const struct ggml_tensor *t0, const struct ggml_tensor *t1) {
-  static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS is not 4 - update this function");
-
-  return (t1->ne[0] % t0->ne[0] == 0) && (t1->ne[1] % t0->ne[1] == 0) && (t1->ne[2] % t0->ne[2] == 0) &&
-         (t1->ne[3] % t0->ne[3] == 0);
-}
-
-static inline bool ggml_can_repeat_rows(const struct ggml_tensor *t0, const struct ggml_tensor *t1) {
-  static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS is not 4 - update this function");
-
-  return (t0->ne[0] == t1->ne[0]) && ggml_can_repeat(t0, t1);
-}
-
 static inline int ggml_up32(int n) { return (n + 31) & ~31; }
 
-// static inline int ggml_up64(int n) {
-//     return (n + 63) & ~63;
-// }
-
-static inline int ggml_up(int n, int m) {
-  // assert m is a power of 2
-
-  return (n + m - 1) & ~(m - 1);
-}
+static inline int ggml_up(int n, int m) { return (n + m - 1) & ~(m - 1); }
 
 // assert that pointer is aligned to GGML_MEM_ALIGN
 #define ggml_assert_aligned(ptr) assert(((uintptr_t)(ptr)) % GGML_MEM_ALIGN == 0)
@@ -7913,14 +7851,6 @@ static void ggml_compute_forward_set_f32(const struct ggml_compute_params *param
   GGML_TENSOR_LOCALS(int64_t, ne1, src1, ne);
   GGML_TENSOR_LOCALS(size_t, nb1, src1, nb);
 
-  // src0 and dst as viewed during set
-  const size_t nb0 = ggml_element_size(src0);
-
-  const int im0 = (ne10 == 0 ? 0 : ne10 - 1);
-  const int im1 = (ne11 == 0 ? 0 : ne11 - 1);
-  const int im2 = (ne12 == 0 ? 0 : ne12 - 1);
-  const int im3 = (ne13 == 0 ? 0 : ne13 - 1);
-
   // rows per thread
   const int dr = (nr + nth - 1) / nth;
 
@@ -8140,7 +8070,7 @@ static void ggml_compute_forward_get_rows_back_f32_f16(const struct ggml_compute
 
 static void ggml_compute_forward_get_rows_back_f32(const struct ggml_compute_params *params,
                                                    const struct ggml_tensor *src0, const struct ggml_tensor *src1,
-                                                   const struct ggml_tensor *opt0, struct ggml_tensor *dst) {
+                                                   struct ggml_tensor *dst) {
   // ggml_compute_forward_dup_same_cont(params, opt0, dst);
 
   if (params->type == GGML_TASK_INIT) {
@@ -8170,7 +8100,7 @@ static void ggml_compute_forward_get_rows_back(const struct ggml_compute_params 
       ggml_compute_forward_get_rows_back_f32_f16(params, src0, src1, opt0, dst);
     } break;
     case GGML_TYPE_F32: {
-      ggml_compute_forward_get_rows_back_f32(params, src0, src1, opt0, dst);
+      ggml_compute_forward_get_rows_back_f32(params, src0, src1, dst);
     } break;
     default: {
     } break;
@@ -8435,14 +8365,11 @@ static void ggml_compute_forward_alibi_f32(const struct ggml_compute_params *par
     return;
   }
 
-  const int n_past = ((int32_t *)src1->data)[0];
   const int n_head = ((int32_t *)src1->data)[1];
   const float max_bias = ((float *)src1->data)[2];
 
   const int ne0 = src0->ne[0];  // all_seq_len = n_past + ne1
   const int ne1 = src0->ne[1];  // seq_len_without_past
-  const int ne2 = src0->ne[2];  // n_head -> this is k
-  // const int ne3 = src0->ne[3]; // 1 -> bsz
 
   const int n = ggml_nrows(src0);
   const int ne2_ne3 = n / ne1;  // ne2*ne3
@@ -8486,14 +8413,11 @@ static void ggml_compute_forward_alibi_f16(const struct ggml_compute_params *par
     return;
   }
 
-  const int n_past = ((int32_t *)src1->data)[0];
   const int n_head = ((int32_t *)src1->data)[1];
   const float max_bias = ((float *)src1->data)[2];
 
   const int ne0 = src0->ne[0];  // all_seq_len = n_past + ne1
   const int ne1 = src0->ne[1];  // seq_len_without_past
-  const int ne2 = src0->ne[2];  // n_head -> this is k
-  // const int ne3 = src0->ne[3]; // 1 -> bsz
 
   const int n = ggml_nrows(src0);
   const int ne2_ne3 = n / ne1;  // ne2*ne3
@@ -8501,9 +8425,6 @@ static void ggml_compute_forward_alibi_f16(const struct ggml_compute_params *par
   const int nb0 = src0->nb[0];
   const int nb1 = src0->nb[1];
   const int nb2 = src0->nb[2];
-  // const int nb3 = src0->nb[3];
-
-  (void)n_past;
 
   // add alibi to src0 (KQ_scaled)
   const int n_heads_log2_floor = 1 << (int)floor(log2(n_head));
@@ -8580,10 +8501,8 @@ static void ggml_compute_forward_clamp_f32(const struct ggml_compute_params *par
   const int n = ggml_nrows(src0);
   const int nc = src0->ne[0];
 
-  const size_t nb00 = src0->nb[0];
   const size_t nb01 = src0->nb[1];
 
-  const size_t nb0 = dst->nb[0];
   const size_t nb1 = dst->nb[1];
 
   for (int j = ith; j < n; j += nth) {
@@ -9547,10 +9466,7 @@ static void ggml_compute_forward_conv_2d_sk_p0(const struct ggml_compute_params 
     case GGML_TYPE_F16: {
       ggml_compute_forward_conv_2d_sk_p0_f16_f32(params, src0, src1, dst);
     } break;
-    case GGML_TYPE_F32: {
-      // ggml_compute_forward_conv_2d_sk_p0_f32(params, src0, src1, dst);
-
-    } break;
+    case GGML_TYPE_F32:
     default: {
     } break;
   }
@@ -9564,9 +9480,7 @@ static void ggml_compute_forward_conv_2d(const struct ggml_compute_params *param
   const int32_t s0 = ((const int32_t *)(opt0->data))[0];
   const int32_t s1 = ((const int32_t *)(opt0->data))[1];
   const int32_t p0 = ((const int32_t *)(opt0->data))[2];
-  const int32_t p1 = ((const int32_t *)(opt0->data))[3];
   const int32_t d0 = ((const int32_t *)(opt0->data))[4];
-  const int32_t d1 = ((const int32_t *)(opt0->data))[5];
   assert(d0 == 1);  // dilation not supported
 
   assert(p0 == 0);  // padding not supported
@@ -9630,9 +9544,7 @@ static void ggml_compute_forward_pool_1d_sk_p0(const struct ggml_compute_params 
           drow[i] /= k;
           break;
         case GGML_OP_POOL_MAX:
-          break;
         case GGML_OP_POOL_COUNT:
-
           break;
       }
     }
@@ -9721,9 +9633,7 @@ static void ggml_compute_forward_pool_2d_sk_p0(const struct ggml_compute_params 
             *out /= ka;
             break;
           case GGML_OP_POOL_MAX:
-            break;
           case GGML_OP_POOL_COUNT:
-
             break;
         }
       }
@@ -9742,9 +9652,7 @@ static void ggml_compute_forward_pool_2d(const struct ggml_compute_params *param
   enum ggml_op_pool op = opts[0];
   const int k0 = opts[1];
   const int k1 = opts[2];
-  const int s0 = opts[3];
   const int s1 = opts[4];
-  const int p0 = opts[5];
   const int p1 = opts[6];
 
   assert(p1 == 0);  // padding not supported
@@ -10114,8 +10022,6 @@ static void ggml_compute_forward_flash_ff_f16(const struct ggml_compute_params *
   const int ith = params->ith;
   const int nth = params->nth;
 
-  const int64_t D = nea0;
-  // const int64_t N = nea1;
   const int64_t M = neb01;
 
   // dst cannot be transposed or permuted
@@ -11199,9 +11105,7 @@ static void ggml_compute_forward(struct ggml_compute_params *params, struct ggml
     case GGML_OP_CROSS_ENTROPY_LOSS_BACK: {
       ggml_compute_forward_cross_entropy_loss_back(params, tensor->src[0], tensor->src[1], tensor->src[2], tensor);
     } break;
-    case GGML_OP_NONE: {
-      // nop
-    } break;
+    case GGML_OP_NONE:
     case GGML_OP_COUNT: {
     } break;
   }
@@ -11724,23 +11628,13 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
     case GGML_OP_CROSS_ENTROPY_LOSS_BACK: {
       assert(false);  // not supported
     } break;
-    case GGML_OP_NONE: {
-      // nop
-    } break;
+    case GGML_OP_NONE:
     case GGML_OP_COUNT: {
     } break;
   }
 }
 
 static void ggml_visit_parents(struct ggml_cgraph *cgraph, struct ggml_tensor *node) {
-  if (node->grad == NULL) {
-    // this usually happens when we generate intermediate nodes from constants in the backward pass
-    // it can also happen during forward pass, if the user performs computations with constants
-    if (node->op != GGML_OP_NONE) {
-      // GGML_PRINT_DEBUG("%s: warning: node %p has no grad, but op %d\n", __func__, (void *) node, node->op);
-    }
-  }
-
   // check if already visited
   for (int i = 0; i < cgraph->n_nodes; i++) {
     if (cgraph->nodes[i] == node) {
@@ -12139,9 +12033,7 @@ struct ggml_cplan ggml_graph_plan(struct ggml_cgraph *cgraph, int n_threads) {
 
         work_size = MAX(work_size, cur);
       } break;
-      case GGML_OP_SCALE: {
-        n_tasks = 1;
-      } break;
+      case GGML_OP_SCALE:
       case GGML_OP_SET:
       case GGML_OP_CONT:
       case GGML_OP_RESHAPE:
@@ -12161,9 +12053,7 @@ struct ggml_cplan ggml_graph_plan(struct ggml_cgraph *cgraph, int n_threads) {
       case GGML_OP_ROPE_BACK: {
         n_tasks = n_threads;
       } break;
-      case GGML_OP_ALIBI: {
-        n_tasks = 1;  // TODO
-      } break;
+      case GGML_OP_ALIBI:
       case GGML_OP_CLAMP: {
         n_tasks = 1;  // TODO
       } break;
@@ -12352,7 +12242,7 @@ int ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan) {
           .shared = &state_shared,
       };
 
-      const int rc = ggml_thread_create(&workers[j].thrd, NULL, ggml_graph_compute_thread, &workers[j]);
+      ggml_thread_create(&workers[j].thrd, NULL, ggml_graph_compute_thread, &workers[j]);
     }
   }
   workers[0].ith = 0;
@@ -12370,7 +12260,7 @@ int ggml_graph_compute(struct ggml_cgraph *cgraph, struct ggml_cplan *cplan) {
   // join or kill thread pool
   if (n_threads > 1) {
     for (int j = 1; j < n_threads; j++) {
-      const int rc = ggml_thread_join(workers[j].thrd, NULL);
+      ggml_thread_join(workers[j].thrd, NULL);
     }
   }
 
