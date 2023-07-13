@@ -883,8 +883,8 @@ static void dequantize_row_q5_K(device const block_q5_K *x, device float *y, int
 
 #if QK_K == 256
   for (int i = 0; i < nb; i++) {
-    const float d = (float)(x[i].d);
-    const float min = (float)(x[i].dmin);
+    const float d = x[i].d;
+    const float min = x[i].dmin;
 
     device const uint8_t *ql = x[i].qs;
     device const uint8_t *qh = x[i].qh;
@@ -1174,7 +1174,7 @@ kernel void kernel_mul_mat_q3_K_f32(device const void *src0, device const float 
   // float sumf = 0;
   float sumf1 = 0, sumf2 = 0;
   for (int i = tpitg.x; i < nb; i += tptg.x) {
-    const float d_all = (float)(x[i].d);
+    const float d_all = x[i].d;
 
     device const uint8_t *q = x[i].qs + q_offset;
     device const uint8_t *h = x[i].hmask + l0;
@@ -1213,7 +1213,7 @@ kernel void kernel_mul_mat_q3_K_f32(device const void *src0, device const float 
   float sumf = 0;
 
   for (int i = tpitg.y; i < nb; i += tptg.y) {
-    const float d_all = (float)(x[i].d);
+    const float d_all = x[i].d;
 
     device const uint8_t *q = x[i].qs + il;
     device const uint8_t *h = x[i].hmask + in;
@@ -1295,15 +1295,15 @@ kernel void kernel_mul_mat_q4_K_f32(device const void *src0, device const float 
   uchar2 sc1, sc2, sc3, sc4;
 
   for (int i = tpitg.x; i < nb; i += tptg.x) {
-    device const uint8_t *q1 = (x + i)->qs + q_offset;
+    device const uint8_t *q1 = x[i].qs + q_offset;
     device const uint8_t *q2 = q1 + 64;
     device const float *y1 = yy + i * QK_K + y_offset;
     device const float *y2 = y1 + 128;
 
-    const float dall = (float)((x + i)->d);
-    const float dmin = (float)((x + i)->dmin);
+    const float dall = x[i].d;
+    const float dmin = x[i].dmin;
 
-    device const uint16_t *a = (device const uint16_t *)(x + i)->scales;
+    device const uint16_t *a = (device const uint16_t *)x[i].scales;
     sc1 = as_type<uchar2>((uint16_t)(a[im + 0] & kmask1));
     sc2 = as_type<uchar2>((uint16_t)(a[im + 2] & kmask1));
     sc3 = as_type<uchar2>((uint16_t)(((a[im + 4] >> 0) & kmask2) | ((a[im + 0] & kmask3) >> 2)));
@@ -1426,16 +1426,16 @@ kernel void kernel_mul_mat_q5_K_f32(device const void *src0, device const float 
   uchar2 sc1, sc2, sc3, sc4;
 
   for (int i = tpitg.x; i < nb; i += tptg.x) {
-    device const uint8_t *q1 = (x + i)->qs + q_offset;
+    device const uint8_t *q1 = x[i].qs + q_offset;
     device const uint8_t *q2 = q1 + 64;
-    device const uint8_t *qh = (x + i)->qh + l0;
+    device const uint8_t *qh = x[i].qh + l0;
     device const float *y1 = yy + i * QK_K + y_offset;
     device const float *y2 = y1 + 128;
 
-    const float dall = (float)((x + i)->d);
-    const float dmin = (float)((x + i)->dmin);
+    const float dall = (float)(x[i].d);
+    const float dmin = (float)(x[i].dmin);
 
-    device const uint16_t *a = (device const uint16_t *)(x + i)->scales;
+    device const uint16_t *a = (device const uint16_t *)x[i].scales;
     sc1 = as_type<uchar2>((uint16_t)(a[im + 0] & kmask1));
     sc2 = as_type<uchar2>((uint16_t)(a[im + 2] & kmask1));
     sc3 = as_type<uchar2>((uint16_t)(((a[im + 4] >> 0) & kmask2) | ((a[im + 0] & kmask3) >> 2)));
