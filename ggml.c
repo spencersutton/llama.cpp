@@ -2467,9 +2467,6 @@ static inline int ggml_up32(int n) { return (n + 31) & ~31; }
 
 static inline int ggml_up(int n, int m) { return (n + m - 1) & ~(m - 1); }
 
-// assert that pointer is aligned to GGML_MEM_ALIGN
-#define ggml_assert_aligned(ptr) assert(((uintptr_t)(ptr)) % GGML_MEM_ALIGN == 0)
-
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ggml_context *ggml_init(struct ggml_init_params params) {
@@ -2579,8 +2576,6 @@ struct ggml_context *ggml_init(struct ggml_init_params params) {
           NULL,
       },
   };
-
-  ggml_assert_aligned(ctx->mem_buffer);
 
   GGML_PRINT_DEBUG("%s: context initialized\n", __func__);
 
@@ -2758,8 +2753,6 @@ struct ggml_tensor *ggml_new_tensor_impl(struct ggml_context *ctx, enum ggml_typ
 
   struct ggml_tensor *const result = (struct ggml_tensor *)(mem_buffer + obj_new->offs);
 
-  ggml_assert_aligned(result);
-
   *result = (struct ggml_tensor){
       /*.type         =*/type,
       /*.backend      =*/GGML_BACKEND_CPU,
@@ -2778,9 +2771,6 @@ struct ggml_tensor *ggml_new_tensor_impl(struct ggml_context *ctx, enum ggml_typ
       /*.extra        =*/NULL,
       /*.padding      =*/{0},
   };
-
-  // TODO: this should not be needed as long as we don't rely on aligned SIMD loads
-  // ggml_assert_aligned(result->data);
 
   for (int i = 0; i < n_dims; i++) {
     result->ne[i] = ne[i];
@@ -3426,7 +3416,7 @@ struct ggml_tensor *ggml_mean(struct ggml_context *ctx, struct ggml_tensor *a) {
   bool is_node = false;
 
   if (a->grad) {
-    assert(false);  // TODO: implement
+    abort();  // TODO: implement
     is_node = true;
   }
 
@@ -3785,7 +3775,7 @@ struct ggml_tensor *ggml_norm_impl(struct ggml_context *ctx, struct ggml_tensor 
   bool is_node = false;
 
   if (!inplace && (a->grad)) {
-    assert(false);  // TODO: implement backward
+    abort();  // TODO: implement backward
     is_node = true;
   }
 
@@ -4635,7 +4625,7 @@ struct ggml_tensor *ggml_alibi(struct ggml_context *ctx, struct ggml_tensor *a, 
   bool is_node = false;
 
   if (a->grad) {
-    assert(false);  // TODO: implement backward
+    abort();  // TODO: implement backward
     is_node = true;
   }
 
@@ -4668,7 +4658,7 @@ struct ggml_tensor *ggml_clamp(struct ggml_context *ctx, struct ggml_tensor *a, 
   bool is_node = false;
 
   if (a->grad) {
-    assert(false);  // TODO: implement backward
+    abort();  // TODO: implement backward
     is_node = true;
   }
 
@@ -4703,7 +4693,7 @@ struct ggml_tensor *ggml_conv_1d(struct ggml_context *ctx, struct ggml_tensor *a
   bool is_node = false;
 
   if (a->grad || b->grad) {
-    assert(false);  // TODO: implement backward
+    abort();  // TODO: implement backward
     is_node = true;
   }
 
@@ -4738,7 +4728,7 @@ struct ggml_tensor *ggml_conv_2d(struct ggml_context *ctx, struct ggml_tensor *a
   bool is_node = false;
 
   if (a->grad || b->grad) {
-    assert(false);  // TODO: implement backward
+    abort();  // TODO: implement backward
     is_node = true;
   }
 
@@ -4787,7 +4777,7 @@ struct ggml_tensor *ggml_pool_1d(struct ggml_context *ctx, struct ggml_tensor *a
   bool is_node = false;
 
   if (a->grad) {
-    assert(false);  // TODO: implement backward
+    abort();  // TODO: implement backward
     is_node = true;
   }
 
@@ -4820,7 +4810,7 @@ struct ggml_tensor *ggml_pool_2d(struct ggml_context *ctx, struct ggml_tensor *a
   bool is_node = false;
 
   if (a->grad) {
-    assert(false);  // TODO: implement backward
+    abort();  // TODO: implement backward
     is_node = true;
   }
 
@@ -4953,7 +4943,7 @@ struct ggml_tensor *ggml_win_part(struct ggml_context *ctx, struct ggml_tensor *
   bool is_node = false;
 
   if (a->grad) {
-    assert(false);  // TODO: implement backward
+    abort();  // TODO: implement backward
     is_node = true;
   }
 
@@ -4999,7 +4989,7 @@ struct ggml_tensor *ggml_win_unpart(struct ggml_context *ctx, struct ggml_tensor
   bool is_node = false;
 
   if (a->grad) {
-    assert(false);  // TODO: implement backward
+    abort();  // TODO: implement backward
     is_node = true;
   }
 
@@ -5384,7 +5374,7 @@ static void ggml_compute_forward_dup_f16(const struct ggml_compute_params *param
           }
         }
       } else {
-        assert(false);  // TODO: implement
+        abort();  // TODO: implement
       }
     } else {
       // printf("%s: this is not optimal - fix me\n", __func__);
@@ -5428,7 +5418,7 @@ static void ggml_compute_forward_dup_f16(const struct ggml_compute_params *param
           }
         }
       } else {
-        assert(false);  // TODO: implement
+        abort();  // TODO: implement
       }
     }
     return;
@@ -5545,7 +5535,7 @@ static void ggml_compute_forward_dup_f16(const struct ggml_compute_params *param
       }
     }
   } else {
-    assert(false);  // TODO: implement
+    abort();  // TODO: implement
   }
 }
 
@@ -5626,7 +5616,7 @@ static void ggml_compute_forward_dup_f32(const struct ggml_compute_params *param
           }
         }
       } else {
-        assert(false);  // TODO: implement
+        abort();  // TODO: implement
       }
     } else {
       // printf("%s: this is not optimal - fix me\n", __func__);
@@ -5670,7 +5660,7 @@ static void ggml_compute_forward_dup_f32(const struct ggml_compute_params *param
           }
         }
       } else {
-        assert(false);  // TODO: implement
+        abort();  // TODO: implement
       }
     }
 
@@ -5789,7 +5779,7 @@ static void ggml_compute_forward_dup_f32(const struct ggml_compute_params *param
       }
     }
   } else {
-    assert(false);  // TODO: implement
+    abort();  // TODO: implement
   }
 }
 
@@ -7733,13 +7723,10 @@ static void ggml_compute_forward_out_prod(const struct ggml_compute_params *para
     case GGML_TYPE_Q5_0:
     case GGML_TYPE_Q5_1:
     case GGML_TYPE_Q8_0:
-    case GGML_TYPE_Q8_1: {
-      assert(false);  // todo
-                      // ggml_compute_forward_out_prod_q_f32(params, src0, src1, dst);
-    } break;
+    case GGML_TYPE_Q8_1:
     case GGML_TYPE_F16: {
-      assert(false);  // todo
-                      // ggml_compute_forward_out_prod_f16_f32(params, src0, src1, dst);
+      abort();  // todo
+                // ggml_compute_forward_out_prod_f16_f32(params, src0, src1, dst);
     } break;
     case GGML_TYPE_F32: {
       ggml_compute_forward_out_prod_f32(params, src0, src1, dst);
@@ -9346,16 +9333,12 @@ static void ggml_compute_forward_conv_1d(const struct ggml_compute_params *param
                                          const struct ggml_tensor *src1, const struct ggml_tensor *opt0,
                                          struct ggml_tensor *dst) {
   const int32_t s0 = ((const int32_t *)(opt0->data))[0];
-  const int32_t p0 = ((const int32_t *)(opt0->data))[1];
-  const int32_t d0 = ((const int32_t *)(opt0->data))[2];
-  assert(d0 == 1);                // dilation not supported
-  assert(p0 == src0->ne[0] / 2);  // only half padding supported
   if (s0 == 1) {
     ggml_compute_forward_conv_1d_s1_ph(params, src0, src1, dst);
   } else if (s0 == 2) {
     ggml_compute_forward_conv_1d_s2_ph(params, src0, src1, dst);
   } else {
-    assert(false);  // only stride 1 and 2 supported
+    abort();  // only stride 1 and 2 supported
   };
 }
 
@@ -9466,7 +9449,7 @@ static void ggml_compute_forward_conv_2d(const struct ggml_compute_params *param
   if (s0 == src0->ne[0] && s1 == src0->ne[1]) {
     ggml_compute_forward_conv_2d_sk_p0(params, src0, src1, dst);
   } else {
-    assert(false);  // only stride equal to kernel size is supported
+    abort();  // only stride equal to kernel size is supported
   }
 }
 
@@ -9539,10 +9522,6 @@ static void ggml_compute_forward_pool_1d(const struct ggml_compute_params *param
   const int *opts = (const int *)opt0->data;
   enum ggml_op_pool op = opts[0];
   const int k0 = opts[1];
-  const int s0 = opts[2];
-  const int p0 = opts[3];
-  assert(p0 == 0);   // padding not supported
-  assert(k0 == s0);  // only s = k supported
 
   ggml_compute_forward_pool_1d_sk_p0(params, op, src0, k0, dst);
 }
@@ -9630,12 +9609,6 @@ static void ggml_compute_forward_pool_2d(const struct ggml_compute_params *param
   enum ggml_op_pool op = opts[0];
   const int k0 = opts[1];
   const int k1 = opts[2];
-  const int s1 = opts[4];
-  const int p1 = opts[6];
-
-  assert(p1 == 0);  // padding not supported
-
-  assert(k1 == s1);  // only s = k supported
 
   ggml_compute_forward_pool_2d_sk_p0(params, op, src0, k0, k1, dst);
 }
@@ -10082,7 +10055,7 @@ static void ggml_compute_forward_flash_ff(const struct ggml_compute_params *para
       ggml_compute_forward_flash_ff_f16(params, a, b0, b1, c0, c1, dst);
     } break;
     case GGML_TYPE_F32: {
-      assert(false);  // TODO
+      abort();  // TODO
     } break;
     default: {
     } break;
@@ -11190,7 +11163,7 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
     } break;
     case GGML_OP_MEAN:
     case GGML_OP_ARGMAX: {
-      assert(false);  // TODO: implement
+      abort();  // TODO: implement
     } break;
     case GGML_OP_REPEAT: {
       // necessary for llama
@@ -11224,22 +11197,18 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
         // noop
       }
     } break;
-    case GGML_OP_TANH: {
-      assert(false);  // TODO: not implemented
-    } break;
+    case GGML_OP_TANH:
     case GGML_OP_ELU: {
-      assert(false);  // TODO: not implemented
+      abort();  // TODO: not implemented
     } break;
     case GGML_OP_RELU: {
       if (src0->grad) {
         src0->grad = ggml_sub_impl(ctx, src0->grad, ggml_mul(ctx, ggml_step(ctx, src0), tensor->grad), inplace);
       }
     } break;
-    case GGML_OP_GELU: {
-      assert(false);  // TODO: not implemented
-    } break;
+    case GGML_OP_GELU:
     case GGML_OP_GELU_QUICK: {
-      assert(false);  // TODO: not implemented
+      abort();  // TODO: not implemented
     } break;
     case GGML_OP_SILU: {
       // necessary for llama
@@ -11247,11 +11216,9 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
         src0->grad = ggml_add_impl(ctx, src0->grad, ggml_silu_back(ctx, src0, tensor->grad), inplace);
       }
     } break;
-    case GGML_OP_SILU_BACK: {
-      assert(false);  // TODO: not implemented
-    } break;
+    case GGML_OP_SILU_BACK:
     case GGML_OP_NORM: {
-      assert(false);  // TODO: not implemented
+      abort();  // TODO: not implemented
     } break;
     case GGML_OP_RMS_NORM: {
       // necessary for llama
@@ -11260,7 +11227,7 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
       }
     } break;
     case GGML_OP_RMS_NORM_BACK: {
-      assert(false);  // TODO: not implemented
+      abort();  // TODO: not implemented
     } break;
     case GGML_OP_MUL_MAT: {
       // https://cs231n.github.io/optimization-2/#staged
@@ -11304,7 +11271,7 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
       }
     } break;
     case GGML_OP_OUT_PROD: {
-      assert(false);  // TODO: not implemented
+      abort();  // TODO: not implemented
     } break;
     case GGML_OP_SCALE: {
       // necessary for llama
@@ -11424,11 +11391,9 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
         // noop
       }
     } break;
-    case GGML_OP_GET_ROWS_BACK: {
-      assert(false);  // TODO: not implemented
-    } break;
+    case GGML_OP_GET_ROWS_BACK:
     case GGML_OP_DIAG: {
-      assert(false);  // TODO: not implemented
+      abort();  // TODO: not implemented
     } break;
     case GGML_OP_DIAG_MASK_INF: {
       // necessary for llama
@@ -11460,7 +11425,7 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
 
     } break;
     case GGML_OP_SOFT_MAX_BACK: {
-      assert(false);  // TODO: not implemented
+      abort();  // TODO: not implemented
     } break;
     case GGML_OP_ROPE: {
       // necessary for llama
@@ -11486,23 +11451,13 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
         // noop
       }
     } break;
-    case GGML_OP_ALIBI: {
-      assert(false);  // TODO: not implemented
-    } break;
-    case GGML_OP_CLAMP: {
-      assert(false);  // TODO: not implemented
-    } break;
-    case GGML_OP_CONV_1D: {
-      assert(false);  // TODO: not implemented
-    } break;
-    case GGML_OP_CONV_2D: {
-      assert(false);  // TODO: not implemented
-    } break;
-    case GGML_OP_POOL_1D: {
-      assert(false);  // TODO: not implemented
-    } break;
+    case GGML_OP_ALIBI:
+    case GGML_OP_CLAMP:
+    case GGML_OP_CONV_1D:
+    case GGML_OP_CONV_2D:
+    case GGML_OP_POOL_1D:
     case GGML_OP_POOL_2D: {
-      assert(false);  // TODO: not implemented
+      abort();  // TODO: not implemented
     } break;
     case GGML_OP_FLASH_ATTN: {
       struct ggml_tensor *flash_grad = NULL;
@@ -11582,12 +11537,8 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
         opt0->grad = ggml_add_impl(ctx, opt0->grad, grad_v, inplace);
       }
     } break;
-    case GGML_OP_FLASH_FF: {
-      assert(false);  // not supported
-    } break;
-    case GGML_OP_FLASH_ATTN_BACK: {
-      assert(false);  // not supported
-    } break;
+    case GGML_OP_FLASH_FF:
+    case GGML_OP_FLASH_ATTN_BACK:
     case GGML_OP_WIN_PART:
     case GGML_OP_WIN_UNPART:
     case GGML_OP_MAP_UNARY:
@@ -11595,7 +11546,7 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
     case GGML_OP_MAP_CUSTOM1:
     case GGML_OP_MAP_CUSTOM2:
     case GGML_OP_MAP_CUSTOM3: {
-      assert(false);  // not supported
+      abort();  // not supported
     } break;
     case GGML_OP_CROSS_ENTROPY_LOSS: {
       if (src0->grad) {
@@ -11604,7 +11555,7 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
       }
     } break;
     case GGML_OP_CROSS_ENTROPY_LOSS_BACK: {
-      assert(false);  // not supported
+      abort();  // not supported
     } break;
     case GGML_OP_NONE:
     case GGML_OP_COUNT: {
@@ -13909,7 +13860,7 @@ size_t ggml_quantize_chunk(enum ggml_type type, const float *src, void *dst, int
       memcpy((uint8_t *)dst + start * elemsize, src + start, result);
     } break;
     default:
-      assert(false);
+      abort();
   }
   return result;
 }
