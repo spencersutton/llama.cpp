@@ -57,30 +57,6 @@ typedef void * thread_ret_t;
 // logging
 //
 
-#if (GGML_DEBUG >= 1)
-#define GGML_PRINT_DEBUG(...) printf(__VA_ARGS__)
-#else
-#define GGML_PRINT_DEBUG(...)
-#endif
-
-#if (GGML_DEBUG >= 5)
-#define GGML_PRINT_DEBUG_5(...) printf(__VA_ARGS__)
-#else
-#define GGML_PRINT_DEBUG_5(...)
-#endif
-
-#if (GGML_DEBUG >= 10)
-#define GGML_PRINT_DEBUG_10(...) printf(__VA_ARGS__)
-#else
-#define GGML_PRINT_DEBUG_10(...)
-#endif
-
-#define GGML_PRINT(...) printf(__VA_ARGS__)
-
-// uncomment to use vDSP for soft max computation
-// note: not sure if it is actually faster
-//#define GGML_SOFT_MAX_ACCELERATE
-
 #if UINTPTR_MAX == 0xFFFFFFFF
 #define GGML_MEM_ALIGN 4
 #else
@@ -91,25 +67,8 @@ typedef void * thread_ret_t;
 // logging
 //
 
-#if (GGML_DEBUG >= 1)
-#define GGML_PRINT_DEBUG(...) printf(__VA_ARGS__)
-#else
 #define GGML_PRINT_DEBUG(...)
-#endif
-
-#if (GGML_DEBUG >= 5)
-#define GGML_PRINT_DEBUG_5(...) printf(__VA_ARGS__)
-#else
 #define GGML_PRINT_DEBUG_5(...)
-#endif
-
-#if (GGML_DEBUG >= 10)
-#define GGML_PRINT_DEBUG_10(...) printf(__VA_ARGS__)
-#else
-#define GGML_PRINT_DEBUG_10(...)
-#endif
-
-#define GGML_PRINT(...) printf(__VA_ARGS__)
 
 //
 // end of logging block
@@ -133,14 +92,12 @@ inline static void * ggml_aligned_malloc(size_t size) {
                 error_desc = "insufficient memory";
                 break;
         }
-        GGML_PRINT("%s: %s (attempted to allocate %6.2f MB)\n",
-                   __func__, error_desc, size / (1024.0 * 1024.0));
+        printf("%s: %s (attempted to allocate %6.2f MB)\n",
+               __func__, error_desc, size / (1024.0 * 1024.0));
         return NULL;
     }
     return aligned_memory;
 }
-#define GGML_ALIGNED_MALLOC(size) ggml_aligned_malloc(size)
-#define GGML_ALIGNED_FREE(ptr) free(ptr)
 
 #define UNUSED GGML_UNUSED
 
@@ -2477,21 +2434,21 @@ bool ggml_is_numa(void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ggml_print_object(const struct ggml_object * obj) {
-    GGML_PRINT(" - ggml_object: offset = %zu, size = %zu, next = %p\n",
-               obj->offs, obj->size, (const void *) obj->next);
+    printf(" - ggml_object: offset = %zu, size = %zu, next = %p\n",
+           obj->offs, obj->size, (const void *) obj->next);
 }
 
 void ggml_print_objects(const struct ggml_context * ctx) {
     struct ggml_object * obj = ctx->objects_begin;
 
-    GGML_PRINT("%s: objects in context %p:\n", __func__, (const void *) ctx);
+    printf("%s: objects in context %p:\n", __func__, (const void *) ctx);
 
     while (obj != NULL) {
         ggml_print_object(obj);
         obj = obj->next;
     }
 
-    GGML_PRINT("%s: --- end ---\n", __func__);
+    printf("%s: --- end ---\n", __func__);
 }
 
 int64_t ggml_nelements(const struct ggml_tensor * tensor) {
@@ -2773,7 +2730,7 @@ struct ggml_context * ggml_init(struct ggml_init_params params) {
 
     *ctx = (struct ggml_context){
         /*.mem_size           =*/mem_size,
-        /*.mem_buffer         =*/params.mem_buffer ? params.mem_buffer : GGML_ALIGNED_MALLOC(mem_size),
+        /*.mem_buffer         =*/params.mem_buffer ? params.mem_buffer : ggml_aligned_malloc(mem_size),
         /*.mem_buffer_owned   =*/params.mem_buffer ? false : true,
         /*.no_alloc           =*/params.no_alloc,
         /*.no_alloc_save      =*/params.no_alloc,
@@ -2817,7 +2774,7 @@ void ggml_free(struct ggml_context * ctx) {
                              __func__, i, ctx->n_objects, ctx->objects_end->offs + ctx->objects_end->size);
 
             if (ctx->mem_buffer_owned) {
-                GGML_ALIGNED_FREE(ctx->mem_buffer);
+                free(ctx->mem_buffer);
             }
 
             found = true;
@@ -2930,8 +2887,8 @@ struct ggml_tensor * ggml_new_tensor_impl(
         size_needed += GGML_TENSOR_SIZE;
 
         if (cur_end + size_needed + GGML_OBJECT_SIZE > ctx->mem_size) {
-            GGML_PRINT("%s: not enough space in the context's memory pool (needed %zu, available %zu)\n",
-                       __func__, cur_end + size_needed + GGML_OBJECT_SIZE, ctx->mem_size);
+            printf("%s: not enough space in the context's memory pool (needed %zu, available %zu)\n",
+                   __func__, cur_end + size_needed + GGML_OBJECT_SIZE, ctx->mem_size);
             assert(false);
             return NULL;
         }
@@ -2943,15 +2900,15 @@ struct ggml_tensor * ggml_new_tensor_impl(
         };
     } else {
         if (ctx->scratch.offs + size_needed > ctx->scratch.size) {
-            GGML_PRINT("%s: not enough space in the scratch memory pool (needed %zu, available %zu)\n",
-                       __func__, ctx->scratch.offs + size_needed, ctx->scratch.size);
+            printf("%s: not enough space in the scratch memory pool (needed %zu, available %zu)\n",
+                   __func__, ctx->scratch.offs + size_needed, ctx->scratch.size);
             assert(false);
             return NULL;
         }
 
         if (cur_end + GGML_TENSOR_SIZE + GGML_OBJECT_SIZE > ctx->mem_size) {
-            GGML_PRINT("%s: not enough space in the context's memory pool (needed %zu, available %zu)\n",
-                       __func__, cur_end + GGML_TENSOR_SIZE + GGML_OBJECT_SIZE, ctx->mem_size);
+            printf("%s: not enough space in the context's memory pool (needed %zu, available %zu)\n",
+                   __func__, cur_end + GGML_TENSOR_SIZE + GGML_OBJECT_SIZE, ctx->mem_size);
             assert(false);
             return NULL;
         }
@@ -15207,37 +15164,37 @@ struct ggml_cgraph ggml_graph_import(const char * fname, struct ggml_context ** 
 void ggml_graph_print(const struct ggml_cgraph * cgraph) {
     int64_t perf_total_per_op_us[GGML_OP_COUNT] = {0};
 
-    GGML_PRINT("=== GRAPH ===\n");
+    printf("=== GRAPH ===\n");
 
     GGML_PRINT_DEBUG("n_threads       = %d\n", cgraph->n_threads);
     GGML_PRINT_DEBUG("total work size = %zu bytes\n", cgraph->work_size);
 
-    GGML_PRINT("n_nodes = %d\n", cgraph->n_nodes);
+    printf("n_nodes = %d\n", cgraph->n_nodes);
     for (int i = 0; i < cgraph->n_nodes; i++) {
         struct ggml_tensor * node = cgraph->nodes[i];
 
         perf_total_per_op_us[node->op] += MAX(1, node->perf_time_us);
 
-        GGML_PRINT(" - %3d: [ %5" PRId64 ", %5" PRId64 ", %5" PRId64 "] %16s %s (%3d) cpu = %7.3f / %7.3f ms, wall = %7.3f / %7.3f ms\n",
-                   i,
-                   node->ne[0], node->ne[1], node->ne[2],
-                   GGML_OP_NAME[node->op], node->is_param ? "x" : node->grad ? "g"
-                                                                             : " ",
-                   node->perf_runs,
-                   (double) node->perf_cycles / (double) ggml_cycles_per_ms(),
-                   (double) node->perf_cycles / (double) ggml_cycles_per_ms() / (double) node->perf_runs,
-                   (double) node->perf_time_us / 1000.0,
-                   (double) node->perf_time_us / 1000.0 / node->perf_runs);
+        printf(" - %3d: [ %5" PRId64 ", %5" PRId64 ", %5" PRId64 "] %16s %s (%3d) cpu = %7.3f / %7.3f ms, wall = %7.3f / %7.3f ms\n",
+               i,
+               node->ne[0], node->ne[1], node->ne[2],
+               GGML_OP_NAME[node->op], node->is_param ? "x" : node->grad ? "g"
+                                                                         : " ",
+               node->perf_runs,
+               (double) node->perf_cycles / (double) ggml_cycles_per_ms(),
+               (double) node->perf_cycles / (double) ggml_cycles_per_ms() / (double) node->perf_runs,
+               (double) node->perf_time_us / 1000.0,
+               (double) node->perf_time_us / 1000.0 / node->perf_runs);
     }
 
-    GGML_PRINT("n_leafs = %d\n", cgraph->n_leafs);
+    printf("n_leafs = %d\n", cgraph->n_leafs);
     for (int i = 0; i < cgraph->n_leafs; i++) {
         struct ggml_tensor * node = cgraph->leafs[i];
 
-        GGML_PRINT(" - %3d: [ %5" PRId64 ", %5" PRId64 "] %8s\n",
-                   i,
-                   node->ne[0], node->ne[1],
-                   GGML_OP_NAME[node->op]);
+        printf(" - %3d: [ %5" PRId64 ", %5" PRId64 "] %8s\n",
+               i,
+               node->ne[0], node->ne[1],
+               GGML_OP_NAME[node->op]);
     }
 
     for (int i = 0; i < GGML_OP_COUNT; i++) {
@@ -15245,10 +15202,10 @@ void ggml_graph_print(const struct ggml_cgraph * cgraph) {
             continue;
         }
 
-        GGML_PRINT("perf_total_per_op_us[%16s] = %7.3f ms\n", GGML_OP_NAME[i], (double) perf_total_per_op_us[i] / 1000.0);
+        printf("perf_total_per_op_us[%16s] = %7.3f ms\n", GGML_OP_NAME[i], (double) perf_total_per_op_us[i] / 1000.0);
     }
 
-    GGML_PRINT("========================================\n");
+    printf("========================================\n");
 }
 
 // check if node is part of the graph
@@ -15417,7 +15374,7 @@ void ggml_graph_dump_dot(const struct ggml_cgraph * gb, const struct ggml_cgraph
 
     fclose(fp);
 
-    GGML_PRINT("%s: dot -Tpng %s -o %s.png && open %s.png\n", __func__, filename, filename, filename);
+    printf("%s: dot -Tpng %s -o %s.png && open %s.png\n", __func__, filename, filename, filename);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
