@@ -6455,8 +6455,6 @@ static void ggml_compute_forward_div_f32(const struct ggml_compute_params *param
       vDSP_vdiv((float *)((char *)src1->data + i3 * nb13 + i2 * nb12 + i1 * nb11), 1,
                 (float *)((char *)src0->data + i3 * nb03 + i2 * nb02 + i1 * nb01), 1,
                 (float *)((char *)dst->data + i3 * nb3 + i2 * nb2 + i1 * nb1), 1, ne0);
-      // }
-      // }
     }
   } else {
     // src1 is not contiguous
@@ -7260,9 +7258,6 @@ static void ggml_compute_forward_rms_norm_f32(const struct ggml_compute_params *
         float *y = (float *)((char *)dst->data + i01 * nb1 + i02 * nb2 + i03 * nb3);
 
         memcpy(y, x, ne00 * sizeof(float));
-        // for (int i00 = 0; i00 < ne00; i00++) {
-        //     y[i00] = x[i00];
-        // }
 
         const float scale = 1.0f / sqrtf(mean + eps);
 
@@ -7317,15 +7312,11 @@ static void ggml_compute_forward_rms_norm_back_f32(const struct ggml_compute_par
           sum_xdz += (ggml_float)(x[i00] * dz[i00]);
         }
 
-        // const float mean     = (float)(sum_xx)/ne00;
         const float mean_eps = (float)(sum_xx) / ne00 + eps;
         const float sum_eps = (float)(sum_xx) + eps * ne00;
-        // const float mean_xdz = (float)(sum_xdz)/ne00;
         //  we could cache rms from forward pass to improve performance.
         //  to do this implement ggml_rms and compose ggml_rms_norm using ggml_rms.
-        // const float rms      = sqrtf(mean_eps);
         const float rrms = 1.0f / sqrtf(mean_eps);
-        // const float scale    = -rrms/(ne00 * mean_eps); // -1/(n*rms**3)
 
         {
           // z = rms_norm(x)
@@ -7683,25 +7674,8 @@ static void ggml_compute_forward_out_prod_f32(const struct ggml_compute_params *
       float *d = (float *)((char *)dst->data + (i1 * nb1 + i2 * nb2 + i3 * nb3));
 
       ggml_vec_mad_f32(ne0, d, s0, *s1);
-      // for (int64_t i0 = 0; i0 < ne0; ++i0) {
-      //     d[i0] += s0[i0] * s1[i1];
-      // }
     }
   }
-
-  // int64_t t1 = ggml_perf_time_us();
-  // static int64_t acc = 0;
-  // acc += t1 - t0;
-  // if (t1 - t0 > 10) {
-  //     printf("\n");
-  //     printf("ne00 = %5d, ne01 = %5d, ne02 = %5d, ne03 = %5d\n", ne00, ne01, ne02, ne03);
-  //     printf("nb00 = %5d, nb01 = %5d, nb02 = %5d, nb03 = %5d\n", nb00, nb01, nb02, nb03);
-  //     printf("ne10 = %5d, ne11 = %5d, ne12 = %5d, ne13 = %5d\n", ne10, ne11, ne12, ne13);
-  //     printf("nb10 = %5d, nb11 = %5d, nb12 = %5d, nb13 = %5d\n", nb10, nb11, nb12, nb13);
-
-  //    printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX task %d/%d: %d us, acc = %d\n", ith, nth, (int) (t1
-  //    - t0), (int) acc);
-  //}
 }
 
 static void ggml_compute_forward_out_prod(const struct ggml_compute_params *params, const struct ggml_tensor *src0,
@@ -7978,24 +7952,6 @@ static void ggml_compute_forward_get_rows(const struct ggml_compute_params *para
     default: {
     } break;
   }
-
-  // static bool first = true;
-  // printf("ne0 = %d, ne1 = %d, ne2 = %d\n", dst->ne[0], dst->ne[1], dst->ne[2]);
-  // if (first) {
-  //     first = false;
-  // } else {
-  //     for (int k = 0; k < dst->ne[1]; ++k) {
-  //         for (int j = 0; j < dst->ne[0]/16; ++j) {
-  //             for (int i = 0; i < 16; ++i) {
-  //                 printf("%8.4f ", ((float *) dst->data)[k*dst->ne[0] + j*16 + i]);
-  //             }
-  //             printf("\n");
-  //         }
-  //         printf("\n");
-  //     }
-  //     printf("\n");
-  //     exit(0);
-  // }
 }
 
 // ggml_compute_forward_get_rows_back
@@ -8059,24 +8015,6 @@ static void ggml_compute_forward_get_rows_back(const struct ggml_compute_params 
     default: {
     } break;
   }
-
-  // static bool first = true;
-  // printf("ne0 = %d, ne1 = %d, ne2 = %d\n", dst->ne[0], dst->ne[1], dst->ne[2]);
-  // if (first) {
-  //     first = false;
-  // } else {
-  //     for (int k = 0; k < dst->ne[1]; ++k) {
-  //         for (int j = 0; j < dst->ne[0]/16; ++j) {
-  //             for (int i = 0; i < 16; ++i) {
-  //                 printf("%8.4f ", ((float *) dst->data)[k*dst->ne[0] + j*16 + i]);
-  //             }
-  //             printf("\n");
-  //         }
-  //         printf("\n");
-  //     }
-  //     printf("\n");
-  //     exit(0);
-  // }
 }
 
 // ggml_compute_forward_diag
@@ -8511,9 +8449,6 @@ static void ggml_compute_forward_rope_f32(const struct ggml_compute_params *para
 
   GGML_TENSOR_UNARY_OP_LOCALS;
 
-  // printf("ne0: %d, ne1: %d, ne2: %d, ne3: %d\n", ne0, ne1, ne2, ne3);
-  // printf("n_past = %d, ne2 = %d\n", n_past, ne2);
-
   const int ith = params->ith;
   const int nth = params->nth;
 
@@ -8762,18 +8697,11 @@ static void ggml_compute_forward_rope_back_f32(const struct ggml_compute_params 
     return;
   }
 
-  // y = rope(x, src1)
-  // dx = rope_back(dy, src1)
-  // src0 is dy, src1 contains options
-
   const int n_past = ((int32_t *)src1->data)[0];
   const int n_dims = ((int32_t *)src1->data)[1];
   const int mode = ((int32_t *)src1->data)[2];
 
   GGML_TENSOR_UNARY_OP_LOCALS;
-
-  // printf("ne0: %d, ne1: %d, ne2: %d, ne3: %d\n", ne0, ne1, ne2, ne3);
-  // printf("n_past = %d, ne2 = %d\n", n_past, ne2);
 
   const int ith = params->ith;
   const int nth = params->nth;
@@ -9780,8 +9708,6 @@ static void ggml_compute_forward_flash_attn_f16(const struct ggml_compute_params
   const int ir1 = MIN(ir0 + dr, nr);
 
   const float scale = 1.0f / sqrtf(D);
-
-  // printf("P=%d N=%d D=%d ir0=%d ir1=%d scale = %f\n", P, N, D, ir0, ir1, scale);
 
   for (int ir = ir0; ir < ir1; ++ir) {
     // q indices
