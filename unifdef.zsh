@@ -55,6 +55,7 @@ ggml_defines=(
     -U GGML_SHARED
     -U GGML_USE_CLBLAST
     -U GGML_USE_CUBLAS
+    -U LLAMA_API_INTERNAL
     -U LLAMA_SHARED
 )
 
