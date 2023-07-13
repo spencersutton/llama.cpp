@@ -1005,10 +1005,6 @@ static void llama_model_load_internal(const std::string &fname, llama_model &mod
     }
   }
 
-  (void)main_gpu;
-#define LLAMA_BACKEND_OFFLOAD GGML_BACKEND_CPU
-#define LLAMA_BACKEND_OFFLOAD_SPLIT GGML_BACKEND_CPU
-
   // prepare memory for the weights
   size_t vram_weights = 0;
   size_t vram_scratch = 0;
@@ -1040,9 +1036,8 @@ static void llama_model_load_internal(const std::string &fname, llama_model &mod
 
     model.layers.resize(n_layer);
     for (uint32_t i = 0; i < n_layer; ++i) {
-      const ggml_backend backend = int(i) < i_gpu_start ? GGML_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD;  // NOLINT
-      const ggml_backend backend_split =
-          int(i) < i_gpu_start ? GGML_BACKEND_CPU : LLAMA_BACKEND_OFFLOAD_SPLIT;  // NOLINT
+      const ggml_backend backend = int(i) < i_gpu_start ? GGML_BACKEND_CPU : GGML_BACKEND_CPU;        // NOLINT
+      const ggml_backend backend_split = int(i) < i_gpu_start ? GGML_BACKEND_CPU : GGML_BACKEND_CPU;  // NOLINT
 
       auto &layer = model.layers[i];
 
