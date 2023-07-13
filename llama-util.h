@@ -41,7 +41,8 @@ __attribute__((format(printf, 1, 2)))
 #endif
 static std::string
 format(const char * fmt, ...) {
-    va_list ap, ap2;
+    va_list ap;
+    va_list ap2;
     va_start(ap, fmt);
     va_copy(ap2, ap);
     int size = vsnprintf(NULL, 0, fmt, ap);
@@ -75,7 +76,7 @@ struct llama_file {
         return (size_t) ret;
     }
 
-    void seek(size_t offset, int whence) {
+    void seek(size_t offset, int whence) const {
         int ret = std::fseek(fp, (long) offset, whence);
         LLAMA_ASSERT(ret == 0); // same
     }
@@ -94,13 +95,13 @@ struct llama_file {
         }
     }
 
-    std::uint32_t read_u32() {
+    std::uint32_t read_u32() const {
         std::uint32_t ret;
         read_raw(&ret, sizeof(ret));
         return ret;
     }
 
-    std::string read_string(std::uint32_t len) {
+    std::string read_string(std::uint32_t len) const {
         std::vector<char> chars(len);
         read_raw(chars.data(), len);
         return std::string(chars.data(), len);
@@ -117,7 +118,7 @@ struct llama_file {
         }
     }
 
-    void write_u32(std::uint32_t val) {
+    void write_u32(std::uint32_t val) const {
         write_raw(&val, sizeof(val));
     }
 
@@ -222,7 +223,7 @@ struct llama_mlock {
 #ifdef _POSIX_MEMLOCK_RANGE
     static constexpr bool SUPPORTED = true;
 
-    size_t lock_granularity() {
+    static size_t lock_granularity() {
         return (size_t) sysconf(_SC_PAGESIZE);
     }
 
@@ -235,29 +236,28 @@ struct llama_mlock {
     "Try increasing RLIMIT_MLOCK ('ulimit -l' as root).\n"
 #endif
 
-    bool raw_lock(const void * addr, size_t size) {
+    bool raw_lock(const void * addr, size_t size) const {
         if (!mlock(addr, size)) {
             return true;
-        } else {
-            char * errmsg = std::strerror(errno);
-            bool suggest = (errno == ENOMEM);
-
-            // Check if the resource limit is fine after all
-            struct rlimit lock_limit;
-            if (suggest && getrlimit(RLIMIT_MEMLOCK, &lock_limit))
-                suggest = false;
-            if (suggest && (lock_limit.rlim_max > lock_limit.rlim_cur + size))
-                suggest = false;
-
-            fprintf(stderr, "warning: failed to mlock %zu-byte buffer (after previously locking %zu bytes): %s\n%s",
-                    size, this->size, errmsg, suggest ? MLOCK_SUGGESTION : "");
-            return false;
         }
+        char * errmsg = std::strerror(errno);
+        bool suggest = (errno == ENOMEM);
+
+        // Check if the resource limit is fine after all
+        struct rlimit lock_limit;
+        if (suggest && getrlimit(RLIMIT_MEMLOCK, &lock_limit))
+            suggest = false;
+        if (suggest && (lock_limit.rlim_max > lock_limit.rlim_cur + size))
+            suggest = false;
+
+        fprintf(stderr, "warning: failed to mlock %zu-byte buffer (after previously locking %zu bytes): %s\n%s",
+                size, this->size, errmsg, suggest ? MLOCK_SUGGESTION : "");
+        return false;
     }
 
 #undef MLOCK_SUGGESTION
 
-    void raw_unlock(void * addr, size_t size) {
+    static void raw_unlock(void * addr, size_t size) {
         if (munlock(addr, size)) {
             fprintf(stderr, "warning: failed to munlock buffer: %s\n", std::strerror(errno));
         }
