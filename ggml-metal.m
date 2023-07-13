@@ -462,23 +462,6 @@ void ggml_metal_graph_compute(struct ggml_metal_context *ctx,
         id<MTLBuffer> id_dst =
             dst ? ggml_metal_get_buffer(ctx, dst, &offs_dst) : nil;
 
-        // metal_printf("%s: op - %s\n", __func__, ggml_op_name(dst->op));
-        // if (src0) {
-        //     metal_printf("%s: src0 - %4s [%5lld, %5lld, %5lld], %d, %s\n",
-        //     __func__, ggml_type_name(src0t), ne00, ne01, ne02,
-        //             ggml_is_contiguous(src0), src0->name);
-        // }
-        // if (src1) {
-        //     metal_printf("%s: src1 - %4s [%5lld, %5lld, %5lld], %d, %s\n",
-        //     __func__, ggml_type_name(src1t), ne10, ne11, ne12,
-        //             ggml_is_contiguous(src1), src1->name);
-        // }
-        // if (dst) {
-        //     metal_printf("%s: dst  - %4s [%5lld, %5lld, %5lld], 1, %s\n",
-        //     __func__, ggml_type_name(dstt),  ne0,  ne1,  ne2,
-        //             dst->name);
-        // }
-
         switch (dst->op) {
         case GGML_OP_NONE:
         case GGML_OP_RESHAPE:

@@ -2460,10 +2460,6 @@ void ggml_vec_dot_q6_K_q8_K(const int n, float *restrict s, const void *restrict
               vaddvq_s32(vdotq_s32(vzero, q6bytes.val[3], q8bytes.val[3])) * scale[3];
       scale += 4;
 
-      // for (int l = 0; l < 4; ++l) {
-      //     const int32x4_t p = vdotq_s32(vzero, q6bytes.val[l], q8bytes.val[l]);
-      //     isum += vaddvq_s32(p) * *scale++;
-      // }
 #else
       p0 = vaddq_s16(vmull_s8(vget_low_s8(q6bytes.val[0]), vget_low_s8(q8bytes.val[0])),
                      vmull_s8(vget_high_s8(q6bytes.val[0]), vget_high_s8(q8bytes.val[0])));

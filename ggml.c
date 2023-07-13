@@ -1919,13 +1919,6 @@ inline static void ggml_vec_gelu_f32(const int n, float *y, const float *x) {
 
 inline static float ggml_gelu_quick_f32(float x) { return x * (1.0f / (1.0f + expf(GELU_QUICK_COEF * x))); }
 
-// inline static void ggml_vec_gelu_quick_f16(const int n, ggml_fp16_t * y, const ggml_fp16_t * x) {
-//     const uint16_t * i16 = (const uint16_t *) x;
-//     for (int i = 0; i < n; ++i) {
-//         y[i] = table_gelu_quick_f16[i16[i]];
-//     }
-// }
-
 inline static void ggml_vec_gelu_quick_f32(const int n, float *y, const float *x) {
   uint16_t t;
   for (int i = 0; i < n; ++i) {
@@ -1937,13 +1930,6 @@ inline static void ggml_vec_gelu_quick_f32(const int n, float *y, const float *x
 
 // Sigmoid Linear Unit (SiLU) function
 inline static float ggml_silu_f32(float x) { return x / (1.0f + expf(-x)); }
-
-// inline static void ggml_vec_silu_f16(const int n, ggml_fp16_t * y, const ggml_fp16_t * x) {
-//     const uint16_t * i16 = (const uint16_t *) x;
-//     for (int i = 0; i < n; ++i) {
-//         y[i] = table_silu_f16[i16[i]];
-//     }
-// }
 
 inline static void ggml_vec_silu_f32(const int n, float *y, const float *x) {
   uint16_t t;
@@ -5832,8 +5818,6 @@ static void ggml_compute_forward_add_f32(const struct ggml_compute_params *param
       float *src1_ptr = (float *)((char *)src1->data + i13 * nb13 + i12 * nb12 + i11 * nb11);
 
       vDSP_vadd(src0_ptr, 1, src1_ptr, 1, dst_ptr, 1, ne00);
-      // }
-      // }
     }
   } else {
     // src1 is not contiguous
@@ -6322,8 +6306,6 @@ static void ggml_compute_forward_sub_f32(const struct ggml_compute_params *param
       vDSP_vsub((float *)((char *)src1->data + i3 * nb13 + i2 * nb12 + i1 * nb11), 1,
                 (float *)((char *)src0->data + i3 * nb03 + i2 * nb02 + i1 * nb01), 1,
                 (float *)((char *)dst->data + i3 * nb3 + i2 * nb2 + i1 * nb1), 1, ne0);
-      // }
-      // }
     }
   } else {
     // src1 is not contiguous
@@ -6387,8 +6369,6 @@ static void ggml_compute_forward_mul_f32(const struct ggml_compute_params *param
       UNUSED(ggml_vec_mul_f32);
 
       vDSP_vmul(src0_ptr, 1, src1_ptr, 1, dst_ptr, 1, ne00);
-      // }
-      // }
     }
   } else {
     // src1 is not contiguous

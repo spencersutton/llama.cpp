@@ -338,16 +338,4 @@ const char *llama_print_system_info(void);
 }
 #endif
 
-// Internal API to be implemented by llama.cpp and used by tests/benchmarks only
-#ifdef LLAMA_API_INTERNAL
-
-#include <string>
-#include <vector>
-struct ggml_tensor;
-
-const std::vector<std::pair<std::string, struct ggml_tensor *>> &llama_internal_get_tensor_map(
-    struct llama_context *ctx);
-
-#endif
-
 #endif  // LLAMA_H

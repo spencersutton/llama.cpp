@@ -2020,19 +2020,6 @@ void print_tokens_batch(struct llama_context *ctx, struct ggml_tensor *tokens) {
     for (int i0 = 0; i0 < tokens->ne[0]; ++i0) {
       int token = get_i32_2d(tokens, i0, i1);
       print_token(ctx, token);
-      // bool isnl = (token == llama_token_nl());
-      // if (isnl) {
-      //     ++num_newline;
-      // }
-      // if (isnl) {
-      //     if (num_newline < 2) {
-      //         print_token(ctx, token);
-      //     } else {
-      //         printf("\\n");
-      //     }
-      // } else {
-      //     print_token(ctx, token);
-      // }
     }
     printf("\n--\n");
   }
@@ -2093,12 +2080,6 @@ void get_example_targets_batch(struct llama_context * /*lctx*/, const int *train
         set_i32_2d(tokens_input, i, k, token);
       }
     }
-    // printf("\n=\n");
-    // for (int i=0; i<n_tokens; ++i) {
-    //     int token = get_i32_2d(tokens_input, i, k);
-    //     print_token(lctx, token);
-    // }
-    // printf("\n-\n");
   }
 }
 

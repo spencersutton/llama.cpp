@@ -398,14 +398,6 @@ int main(int argc, char** argv) {
 
         // stop saving session if we run out of context
         path_session.clear();
-
-        // printf("\n---\n");
-        // printf("resetting: '");
-        // for (int i = 0; i < (int) embd.size(); i++) {
-        //     printf("%s", llama_token_to_str(ctx, embd[i]));
-        // }
-        // printf("'\n");
-        // printf("\n---\n");
       }
 
       // try to reuse a matching prefix from the loaded session instead of re-eval (via n_past)
@@ -449,11 +441,6 @@ int main(int argc, char** argv) {
 
           input_buf = embd_guidance.data();
           input_size = embd_guidance.size();
-          // fprintf(stderr, "\n---------------------\n");
-          // for (int i = 0; i < (int) embd_guidance.size(); i++) {
-          // fprintf(stderr, "%s", llama_token_to_str(ctx, embd_guidance[i]));
-          // }
-          // fprintf(stderr, "\n---------------------\n");
         } else {
           input_buf = embd.data();
           input_size = embd.size();
