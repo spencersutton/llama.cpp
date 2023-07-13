@@ -901,10 +901,9 @@ static const char *llama_model_type_name(e_model type) {
 }
 
 static void llama_model_load_internal(const std::string &fname, llama_model &model, llama_vocab &vocab, int n_ctx,
-                                      int n_batch, int n_gpu_layers, int main_gpu, const float *tensor_split,
-                                      ggml_type memory_type, bool use_mmap, bool use_mlock, bool has_lora,
-                                      bool vocab_only, llama_progress_callback progress_callback,
-                                      void *progress_callback_user_data) {
+                                      int n_batch, int n_gpu_layers, const float *tensor_split, ggml_type memory_type,
+                                      bool use_mmap, bool use_mlock, bool has_lora, bool vocab_only,
+                                      llama_progress_callback progress_callback, void *progress_callback_user_data) {
   model.t_start_us = ggml_time_us();
 
   std::unique_ptr<llama_model_loader> ml(new llama_model_loader(fname, use_mmap, has_lora));
@@ -1108,13 +1107,12 @@ static void llama_model_load_internal(const std::string &fname, llama_model &mod
 }
 
 static bool llama_model_load(const std::string &fname, llama_model &model, llama_vocab &vocab, int n_ctx, int n_batch,
-                             int n_gpu_layers, int main_gpu, float *tensor_split, ggml_type memory_type, bool use_mmap,
+                             int n_gpu_layers, float *tensor_split, ggml_type memory_type, bool use_mmap,
                              bool use_mlock, bool has_lora, bool vocab_only, llama_progress_callback progress_callback,
                              void *progress_callback_user_data) {
   try {
-    llama_model_load_internal(fname, model, vocab, n_ctx, n_batch, n_gpu_layers, main_gpu, tensor_split, memory_type,
-                              use_mmap, use_mlock, has_lora, vocab_only, progress_callback,
-                              progress_callback_user_data);
+    llama_model_load_internal(fname, model, vocab, n_ctx, n_batch, n_gpu_layers, tensor_split, memory_type, use_mmap,
+                              use_mlock, has_lora, vocab_only, progress_callback, progress_callback_user_data);
     return true;
   } catch (const std::exception &err) {
     fprintf(stderr, "error loading model: %s\n", err.what());
@@ -2459,9 +2457,8 @@ struct llama_model *llama_load_model_from_file(const char *path_model, struct ll
   ggml_type memory_type = params.f16_kv ? GGML_TYPE_F16 : GGML_TYPE_F32;
 
   if (!llama_model_load(path_model, *model, model->vocab, params.n_ctx, params.n_batch, params.n_gpu_layers,
-                        params.main_gpu, params.tensor_split, memory_type, params.use_mmap, params.use_mlock,
-                        params.has_lora, params.vocab_only, params.progress_callback,
-                        params.progress_callback_user_data)) {
+                        params.tensor_split, memory_type, params.use_mmap, params.use_mlock, params.has_lora,
+                        params.vocab_only, params.progress_callback, params.progress_callback_user_data)) {
     delete model;
     fprintf(stderr, "%s: failed to load model\n", __func__);
     return nullptr;

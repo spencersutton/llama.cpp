@@ -7,10 +7,10 @@ ud() {
 defines=(
     -D __aarch64__
     -D __APPLE__
-    # -D __ARM_FEATURE_DOTPROD
-    # -D __ARM_FEATURE_FMA
-    # -D __ARM_FEATURE_FP16_VECTOR_ARITHMETIC
-    # -D __ARM_NEON
+    -D __ARM_FEATURE_DOTPROD
+    -D __ARM_FEATURE_FMA
+    -D __ARM_FEATURE_FP16_VECTOR_ARITHMETIC
+    -D __ARM_NEON
     -D __GNUC__
     -D __has_include
     -D __MACH__
@@ -48,6 +48,7 @@ ggml_defines=(
     -D GGML_GELU_QUICK_FP16
     -D GGML_METAL_NDEBUG
     -D GGML_SILU_FP16
+    -D GGML_SIMD
     -D GGML_USE_ACCELERATE
     -D GGML_USE_K_QUANTS
     -D LLAMA_USE_SCRATCH
@@ -55,6 +56,7 @@ ggml_defines=(
     -U GGML_SHARED
     -U GGML_USE_CLBLAST
     -U GGML_USE_CUBLAS
+    -U GGML_USE_MPI
     -U LLAMA_API_INTERNAL
     -U LLAMA_SHARED
 )
