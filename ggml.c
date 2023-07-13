@@ -7,42 +7,20 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-
-#include "k_quants.h"
-
-#ifdef GGML_USE_METAL
-#include <unistd.h>
-#endif
-
-// if C99 - static_assert is noop
-// ref: https://stackoverflow.com/a/53923785/4039976
-#ifndef static_assert
-#define static_assert(cond, msg) struct global_scope_noop_trick
-#endif
-
-#include <pthread.h>
-#include <stdatomic.h>
-
-typedef void *thread_ret_t;
-
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
-// __FMA__ and __F16C__ are not defined in MSVC, however they are implied with AVX2/AVX512
-
-/*#define GGML_PERF*/
-#define GGML_DEBUG 0
-#define GGML_GELU_FP16
-#define GGML_GELU_QUICK_FP16
-#define GGML_SILU_FP16
+#include "k_quants.h"
 
 #define GGML_SOFT_MAX_UNROLL 4
 #define GGML_VEC_DOT_UNROLL 2
@@ -11810,7 +11788,7 @@ static void ggml_graph_compute_perf_stats_node(struct ggml_tensor *node, const s
   node->perf_time_us += time_us_cur;
 }
 
-static thread_ret_t ggml_graph_compute_thread(void *data) {
+static void *ggml_graph_compute_thread(void *data) {
   struct ggml_compute_state *state = (struct ggml_compute_state *)data;
 
   const struct ggml_cgraph *cgraph = state->shared->cgraph;
@@ -11826,7 +11804,7 @@ static thread_ret_t ggml_graph_compute_thread(void *data) {
   while (true) {
     if (cplan->abort_callback && cplan->abort_callback(cplan->abort_callback_data)) {
       state->shared->node_n += 1;
-      return (thread_ret_t)GGML_EXIT_ABORTED;
+      return (void *)GGML_EXIT_ABORTED;
     }
     if (atomic_fetch_sub(&state->shared->n_active, 1) == 1) {
       // all other threads are finished and spinning
