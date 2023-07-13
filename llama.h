@@ -7,8 +7,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define LLAMA_API
-
 #ifdef __GNUC__
 #define DEPRECATED(func, hint) func __attribute__((deprecated(hint)))
 #else
@@ -130,42 +128,39 @@ struct llama_timings {
   int32_t n_eval;
 };
 
-LLAMA_API struct llama_context_params llama_context_default_params();
-LLAMA_API struct llama_model_quantize_params llama_model_quantize_default_params();
+struct llama_context_params llama_context_default_params();
+struct llama_model_quantize_params llama_model_quantize_default_params();
 
-LLAMA_API bool llama_mmap_supported();
-LLAMA_API bool llama_mlock_supported();
+bool llama_mmap_supported();
+bool llama_mlock_supported();
 
 // TODO: not great API - very likely to change
 // Initialize the llama + ggml backend
 // If numa is true, use NUMA optimizations
 // Call once at the start of the program
-LLAMA_API void llama_backend_init(bool numa);
+void llama_backend_init(bool numa);
 // Call once at the end of the program - currently only used for MPI
-LLAMA_API void llama_backend_free();
+void llama_backend_free();
 
-LLAMA_API int64_t llama_time_us();
+int64_t llama_time_us();
 
-LLAMA_API struct llama_model *llama_load_model_from_file(const char *path_model, struct llama_context_params params);
+struct llama_model *llama_load_model_from_file(const char *path_model, struct llama_context_params params);
 
-LLAMA_API void llama_free_model(struct llama_model *model);
+void llama_free_model(struct llama_model *model);
 
-LLAMA_API struct llama_context *llama_new_context_with_model(struct llama_model *model,
-                                                             struct llama_context_params params);
+struct llama_context *llama_new_context_with_model(struct llama_model *model, struct llama_context_params params);
 
 // Various functions for loading a ggml llama model.
 // Allocate (almost) all memory needed for the model.
 // Return NULL on failure
-LLAMA_API DEPRECATED(struct llama_context *llama_init_from_file(const char *path_model,
-                                                                struct llama_context_params params),
-                     "please use llama_load_model_from_file combined with llama_new_context_with_model instead");
+DEPRECATED(struct llama_context *llama_init_from_file(const char *path_model, struct llama_context_params params),
+           "please use llama_load_model_from_file combined with llama_new_context_with_model instead");
 
 // Frees all allocated memory
-LLAMA_API void llama_free(struct llama_context *ctx);
+void llama_free(struct llama_context *ctx);
 
 // Returns 0 on success
-LLAMA_API int llama_model_quantize(const char *fname_inp, const char *fname_out,
-                                   const llama_model_quantize_params *params);
+int llama_model_quantize(const char *fname_inp, const char *fname_out, const llama_model_quantize_params *params);
 
 // Apply a LoRA adapter to a loaded model
 // path_base_model is the path to a higher quality model to use as a base for
@@ -173,101 +168,99 @@ LLAMA_API int llama_model_quantize(const char *fname_inp, const char *fname_out,
 // The model needs to be reloaded before applying a new adapter, otherwise the adapter
 // will be applied on top of the previous one
 // Returns 0 on success
-LLAMA_API DEPRECATED(int llama_apply_lora_from_file(struct llama_context *ctx, const char *path_lora,
-                                                    const char *path_base_model, int n_threads),
-                     "please use llama_model_apply_lora_from_file instead");
+DEPRECATED(int llama_apply_lora_from_file(struct llama_context *ctx, const char *path_lora, const char *path_base_model,
+                                          int n_threads),
+           "please use llama_model_apply_lora_from_file instead");
 
-LLAMA_API int llama_model_apply_lora_from_file(const struct llama_model *model, const char *path_lora,
-                                               const char *path_base_model, int n_threads);
+int llama_model_apply_lora_from_file(const struct llama_model *model, const char *path_lora,
+                                     const char *path_base_model, int n_threads);
 
 // Returns the number of tokens in the KV cache
-LLAMA_API int llama_get_kv_cache_token_count(const struct llama_context *ctx);
+int llama_get_kv_cache_token_count(const struct llama_context *ctx);
 
 // Sets the current rng seed.
-LLAMA_API void llama_set_rng_seed(struct llama_context *ctx, uint32_t seed);
+void llama_set_rng_seed(struct llama_context *ctx, uint32_t seed);
 
 // Returns the maximum size in bytes of the state (rng, logits, embedding
 // and kv_cache) - will often be smaller after compacting tokens
-LLAMA_API size_t llama_get_state_size(const struct llama_context *ctx);
+size_t llama_get_state_size(const struct llama_context *ctx);
 
 // Copies the state to the specified destination address.
 // Destination needs to have allocated enough memory.
 // Returns the number of bytes copied
-LLAMA_API size_t llama_copy_state_data(struct llama_context *ctx, uint8_t *dst);
+size_t llama_copy_state_data(struct llama_context *ctx, uint8_t *dst);
 
 // Set the state reading from the specified address
 // Returns the number of bytes read
-LLAMA_API size_t llama_set_state_data(struct llama_context *ctx, uint8_t *src);
+size_t llama_set_state_data(struct llama_context *ctx, uint8_t *src);
 
 // Save/load session file
-LLAMA_API bool llama_load_session_file(struct llama_context *ctx, const char *path_session, llama_token *tokens_out,
-                                       size_t n_token_capacity, size_t *n_token_count_out);
-LLAMA_API bool llama_save_session_file(struct llama_context *ctx, const char *path_session, const llama_token *tokens,
-                                       size_t n_token_count);
+bool llama_load_session_file(struct llama_context *ctx, const char *path_session, llama_token *tokens_out,
+                             size_t n_token_capacity, size_t *n_token_count_out);
+bool llama_save_session_file(struct llama_context *ctx, const char *path_session, const llama_token *tokens,
+                             size_t n_token_count);
 
 // Run the llama inference to obtain the logits and probabilities for the next token.
 // tokens + n_tokens is the provided batch of new tokens to process
 // n_past is the number of tokens to use from previous eval calls
 // Returns 0 on success
-LLAMA_API int llama_eval(struct llama_context *ctx, const llama_token *tokens, int n_tokens, int n_past, int n_threads);
+int llama_eval(struct llama_context *ctx, const llama_token *tokens, int n_tokens, int n_past, int n_threads);
 
 // Same as llama_eval, but use float matrix input directly.
-LLAMA_API int llama_eval_embd(struct llama_context *ctx, const float *embd, int n_tokens, int n_past, int n_threads);
+int llama_eval_embd(struct llama_context *ctx, const float *embd, int n_tokens, int n_past, int n_threads);
 
 // Export a static computation graph for context of 511 and batch size of 1
 // NOTE: since this functionality is mostly for debugging and demonstration purposes, we hardcode these
 //       parameters here to keep things simple
 // IMPORTANT: do not use for anything else other than debugging and testing!
-LLAMA_API int llama_eval_export(struct llama_context *ctx, const char *fname);
+int llama_eval_export(struct llama_context *ctx, const char *fname);
 
 // Convert the provided text into tokens.
 // The tokens pointer must be large enough to hold the resulting tokens.
 // Returns the number of tokens on success, no more than n_max_tokens
 // Returns a negative number on failure - the number of tokens that would have been returned
 // TODO: not sure if correct
-LLAMA_API int llama_tokenize(struct llama_context *ctx, const char *text, llama_token *tokens, int n_max_tokens,
-                             bool add_bos);
+int llama_tokenize(struct llama_context *ctx, const char *text, llama_token *tokens, int n_max_tokens, bool add_bos);
 
-LLAMA_API int llama_n_vocab(const struct llama_context *ctx);
-LLAMA_API int llama_n_ctx(const struct llama_context *ctx);
-LLAMA_API int llama_n_embd(const struct llama_context *ctx);
+int llama_n_vocab(const struct llama_context *ctx);
+int llama_n_ctx(const struct llama_context *ctx);
+int llama_n_embd(const struct llama_context *ctx);
 
 // Get the vocabulary as output parameters.
 // Returns number of results.
-LLAMA_API int llama_get_vocab(const struct llama_context *ctx, const char **strings, float *scores, int capacity);
+int llama_get_vocab(const struct llama_context *ctx, const char **strings, float *scores, int capacity);
 
 // Token logits obtained from the last call to llama_eval()
 // The logits for the last token are stored in the last row
 // Can be mutated in order to change the probabilities of the next token
 // Rows: n_tokens
 // Cols: n_vocab
-LLAMA_API float *llama_get_logits(struct llama_context *ctx);
+float *llama_get_logits(struct llama_context *ctx);
 
 // Get the embeddings for the input
 // shape: [n_embd] (1-dimensional)
-LLAMA_API float *llama_get_embeddings(struct llama_context *ctx);
+float *llama_get_embeddings(struct llama_context *ctx);
 
 // Token Id -> String. Uses the vocabulary in the provided context
-LLAMA_API const char *llama_token_to_str(const struct llama_context *ctx, llama_token token);
+const char *llama_token_to_str(const struct llama_context *ctx, llama_token token);
 
 // Special tokens
-LLAMA_API llama_token llama_token_bos();  // beginning-of-sentence
-LLAMA_API llama_token llama_token_eos();  // end-of-sentence
-LLAMA_API llama_token llama_token_nl();   // next-line
+llama_token llama_token_bos();  // beginning-of-sentence
+llama_token llama_token_eos();  // end-of-sentence
+llama_token llama_token_nl();   // next-line
 
 // Sampling functions
 
 /// @details Repetition penalty described in CTRL academic paper https://arxiv.org/abs/1909.05858, with negative logit
 /// fix.
-LLAMA_API void llama_sample_repetition_penalty(struct llama_context *ctx, llama_token_data_array *candidates,
-                                               const llama_token *last_tokens, size_t last_tokens_size, float penalty);
+void llama_sample_repetition_penalty(struct llama_context *ctx, llama_token_data_array *candidates,
+                                     const llama_token *last_tokens, size_t last_tokens_size, float penalty);
 
 /// @details Frequency and presence penalties described in OpenAI API
 /// https://platform.openai.com/docs/api-reference/parameter-details.
-LLAMA_API void llama_sample_frequency_and_presence_penalties(struct llama_context *ctx,
-                                                             llama_token_data_array *candidates,
-                                                             const llama_token *last_tokens, size_t last_tokens_size,
-                                                             float alpha_frequency, float alpha_presence);
+void llama_sample_frequency_and_presence_penalties(struct llama_context *ctx, llama_token_data_array *candidates,
+                                                   const llama_token *last_tokens, size_t last_tokens_size,
+                                                   float alpha_frequency, float alpha_presence);
 
 /// @details Apply classifier-free guidance to the logits as described in academic paper "Stay on topic with
 /// Classifier-Free Guidance" https://arxiv.org/abs/2306.17806
@@ -278,31 +271,26 @@ LLAMA_API void llama_sample_frequency_and_presence_penalties(struct llama_contex
 /// @params scale Guidance strength. 1.0f means no guidance. Higher values mean stronger guidance.
 /// @params smooth_factor Smooth factor between guidance logits and original logits. 1.0f means only use guidance
 /// logits. 0.0f means only original logits.
-LLAMA_API void llama_sample_classifier_free_guidance(struct llama_context *ctx, llama_token_data_array *candidates,
-                                                     struct llama_context *guidance_ctx, float scale,
-                                                     float smooth_factor);
+void llama_sample_classifier_free_guidance(struct llama_context *ctx, llama_token_data_array *candidates,
+                                           struct llama_context *guidance_ctx, float scale, float smooth_factor);
 
 /// @details Sorts candidate tokens by their logits in descending order and calculate probabilities based on logits.
-LLAMA_API void llama_sample_softmax(struct llama_context *ctx, llama_token_data_array *candidates);
+void llama_sample_softmax(struct llama_context *ctx, llama_token_data_array *candidates);
 
 /// @details Top-K sampling described in academic paper "The Curious Case of Neural Text Degeneration"
 /// https://arxiv.org/abs/1904.09751
-LLAMA_API void llama_sample_top_k(struct llama_context *ctx, llama_token_data_array *candidates, int k,
-                                  size_t min_keep);
+void llama_sample_top_k(struct llama_context *ctx, llama_token_data_array *candidates, int k, size_t min_keep);
 
 /// @details Nucleus sampling described in academic paper "The Curious Case of Neural Text Degeneration"
 /// https://arxiv.org/abs/1904.09751
-LLAMA_API void llama_sample_top_p(struct llama_context *ctx, llama_token_data_array *candidates, float p,
-                                  size_t min_keep);
+void llama_sample_top_p(struct llama_context *ctx, llama_token_data_array *candidates, float p, size_t min_keep);
 
 /// @details Tail Free Sampling described in https://www.trentonbricken.com/Tail-Free-Sampling/.
-LLAMA_API void llama_sample_tail_free(struct llama_context *ctx, llama_token_data_array *candidates, float z,
-                                      size_t min_keep);
+void llama_sample_tail_free(struct llama_context *ctx, llama_token_data_array *candidates, float z, size_t min_keep);
 
 /// @details Locally Typical Sampling implementation described in the paper https://arxiv.org/abs/2202.00666.
-LLAMA_API void llama_sample_typical(struct llama_context *ctx, llama_token_data_array *candidates, float p,
-                                    size_t min_keep);
-LLAMA_API void llama_sample_temperature(struct llama_context *ctx, llama_token_data_array *candidates, float temp);
+void llama_sample_typical(struct llama_context *ctx, llama_token_data_array *candidates, float p, size_t min_keep);
+void llama_sample_temperature(struct llama_context *ctx, llama_token_data_array *candidates, float temp);
 
 /// @details Mirostat 1.0 algorithm described in the paper https://arxiv.org/abs/2007.14966. Uses tokens instead of
 /// words.
@@ -319,8 +307,8 @@ LLAMA_API void llama_sample_temperature(struct llama_context *ctx, llama_token_d
 /// experiment with different values to see how it affects the performance of the algorithm.
 /// @param mu Maximum cross-entropy. This value is initialized to be twice the target cross-entropy (`2 * tau`) and is
 /// updated in the algorithm based on the error between the target and observed surprisal.
-LLAMA_API llama_token llama_sample_token_mirostat(struct llama_context *ctx, llama_token_data_array *candidates,
-                                                  float tau, float eta, int m, float *mu);
+llama_token llama_sample_token_mirostat(struct llama_context *ctx, llama_token_data_array *candidates, float tau,
+                                        float eta, int m, float *mu);
 
 /// @details Mirostat 2.0 algorithm described in the paper https://arxiv.org/abs/2007.14966. Uses tokens instead of
 /// words.
@@ -334,22 +322,22 @@ LLAMA_API llama_token llama_sample_token_mirostat(struct llama_context *ctx, lla
 /// result in slower updates.
 /// @param mu Maximum cross-entropy. This value is initialized to be twice the target cross-entropy (`2 * tau`) and is
 /// updated in the algorithm based on the error between the target and observed surprisal.
-LLAMA_API llama_token llama_sample_token_mirostat_v2(struct llama_context *ctx, llama_token_data_array *candidates,
-                                                     float tau, float eta, float *mu);
+llama_token llama_sample_token_mirostat_v2(struct llama_context *ctx, llama_token_data_array *candidates, float tau,
+                                           float eta, float *mu);
 
 /// @details Selects the token with the highest probability.
-LLAMA_API llama_token llama_sample_token_greedy(struct llama_context *ctx, llama_token_data_array *candidates);
+llama_token llama_sample_token_greedy(struct llama_context *ctx, llama_token_data_array *candidates);
 
 /// @details Randomly selects a token from the candidates based on their probabilities.
-LLAMA_API llama_token llama_sample_token(struct llama_context *ctx, llama_token_data_array *candidates);
+llama_token llama_sample_token(struct llama_context *ctx, llama_token_data_array *candidates);
 
 // Performance information
-LLAMA_API struct llama_timings llama_get_timings(struct llama_context *ctx);
-LLAMA_API void llama_print_timings(struct llama_context *ctx);
-LLAMA_API void llama_reset_timings(struct llama_context *ctx);
+struct llama_timings llama_get_timings(struct llama_context *ctx);
+void llama_print_timings(struct llama_context *ctx);
+void llama_reset_timings(struct llama_context *ctx);
 
 // Print system information
-LLAMA_API const char *llama_print_system_info(void);
+const char *llama_print_system_info(void);
 
 #ifdef __cplusplus
 }
