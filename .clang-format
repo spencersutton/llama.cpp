@@ -1,31 +1,8 @@
 ---
 Language: Cpp
-AlignAfterOpenBracket: Align
-AllowShortBlocksOnASingleLine: Empty
-AllowShortCaseLabelsOnASingleLine: true
-ColumnLimit: 0
-DerivePointerAlignment: false
-IndentWidth: 4
-PointerAlignment: Middle
-ReflowComments: false
-SortIncludes: Never
-SpaceAfterCStyleCast: true
-SpacesBeforeTrailingComments: 1
-
-# Same but best tested value
-BinPackArguments: true
-SpaceAfterLogicalNot: false
-SpaceBeforeAssignmentOperators: true
-SpaceBeforeCaseColon: false
-SpacesInCStyleCastParentheses: false
-
-# No effect
-AllowShortEnumsOnASingleLine: true
-BinPackParameters: true
-SpaceAroundPointerQualifiers: Default
-
 # BasedOnStyle:  Google
 AccessModifierOffset: -1
+AlignAfterOpenBracket: Align
 AlignArrayOfStructures: None
 AlignConsecutiveAssignments:
     Enabled: false
@@ -33,6 +10,12 @@ AlignConsecutiveAssignments:
     AcrossComments: false
     AlignCompound: false
     PadOperators: true
+AlignConsecutiveBitFields:
+    Enabled: false
+    AcrossEmptyLines: false
+    AcrossComments: false
+    AlignCompound: false
+    PadOperators: false
 AlignConsecutiveDeclarations:
     Enabled: false
     AcrossEmptyLines: false
@@ -52,6 +35,9 @@ AlignTrailingComments:
     OverEmptyLines: 0
 AllowAllArgumentsOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: WithoutElse
 AllowShortLambdasOnASingleLine: All
@@ -62,6 +48,8 @@ AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
 AttributeMacros:
     - __capability
+BinPackArguments: true
+BinPackParameters: true
 BitFieldColonSpacing: Both
 BraceWrapping:
     AfterCaseLabel: false
@@ -83,6 +71,7 @@ BraceWrapping:
     SplitEmptyRecord: true
     SplitEmptyNamespace: true
 BreakAfterAttributes: Never
+BreakAfterJavaFieldAnnotations: false
 BreakArrays: true
 BreakBeforeBinaryOperators: None
 BreakBeforeConceptDeclarations: Always
@@ -92,11 +81,13 @@ BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
 BreakStringLiterals: true
+ColumnLimit: 120
 CommentPragmas: "^ IWYU pragma:"
 CompactNamespaces: false
 ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true
+DerivePointerAlignment: true
 DisableFormat: false
 EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: LogicalBlock
@@ -108,6 +99,26 @@ ForEachMacros:
     - BOOST_FOREACH
 IfMacros:
     - KJ_IF_MAYBE
+IncludeBlocks: Regroup
+IncludeCategories:
+    - Regex: '^<ext/.*\.h>'
+      Priority: 2
+      SortPriority: 0
+      CaseSensitive: false
+    - Regex: '^<.*\.h>'
+      Priority: 1
+      SortPriority: 0
+      CaseSensitive: false
+    - Regex: "^<.*"
+      Priority: 2
+      SortPriority: 0
+      CaseSensitive: false
+    - Regex: ".*"
+      Priority: 3
+      SortPriority: 0
+      CaseSensitive: false
+IncludeIsMainRegex: "([-_](test|unittest))?$"
+IncludeIsMainSourceRegex: ""
 IndentAccessModifiers: false
 IndentCaseBlocks: false
 IndentCaseLabels: true
@@ -115,6 +126,7 @@ IndentExternBlock: AfterExternBlock
 IndentGotoLabels: true
 IndentPPDirectives: None
 IndentRequiresClause: true
+IndentWidth: 2
 IndentWrappedFunctionNames: false
 InsertBraces: false
 InsertNewlineAtEOF: false
@@ -126,6 +138,8 @@ IntegerLiteralSeparator:
     DecimalMinDigits: 0
     Hex: 0
     HexMinDigits: 0
+JavaScriptQuotes: Leave
+JavaScriptWrapImports: true
 KeepEmptyLinesAtTheStartOfBlocks: false
 LambdaBodyIndentation: Signature
 LineEnding: DeriveLF
@@ -149,6 +163,7 @@ PenaltyBreakTemplateDeclaration: 10
 PenaltyExcessCharacter: 1000000
 PenaltyIndentedWhitespace: 0
 PenaltyReturnTypeOnItsOwnLine: 200
+PointerAlignment: Left
 PPIndentWidth: -1
 QualifierAlignment: Leave
 RawStringFormats:
@@ -182,14 +197,22 @@ RawStringFormats:
       CanonicalDelimiter: pb
       BasedOnStyle: google
 ReferenceAlignment: Pointer
+ReflowComments: true
 RemoveBracesLLVM: false
 RemoveSemicolon: false
 RequiresClausePosition: OwnLine
 RequiresExpressionIndentation: OuterScope
 SeparateDefinitionBlocks: Leave
 ShortNamespaceLines: 1
+SortIncludes: CaseSensitive
+SortJavaStaticImport: Before
 SortUsingDeclarations: LexicographicNumeric
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: true
+SpaceAroundPointerQualifiers: Default
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCaseColon: false
 SpaceBeforeCpp11BracedList: false
 SpaceBeforeCtorInitializerColon: true
 SpaceBeforeInheritanceColon: true
@@ -208,9 +231,11 @@ SpaceBeforeRangeBasedForLoopColon: true
 SpaceBeforeSquareBrackets: false
 SpaceInEmptyBlock: false
 SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
 SpacesInAngles: Never
 SpacesInConditionalStatement: false
 SpacesInContainerLiterals: true
+SpacesInCStyleCastParentheses: false
 SpacesInLineCommentPrefix:
     Minimum: 1
     Maximum: -1
