@@ -61,7 +61,7 @@ ggml_defines=(
     -U LLAMA_SHARED
 )
 
-for x in {*.c,*.cpp,*.h,*.m,examples/main/main.cpp,examples/common.h,examples/common.cpp}; do
+for x in **/*.{c,h,cpp,m}; do
     ud $x $defines
     ud $x $ggml_defines
     # clang-tidy --fix --fix-errors -p build/ $x

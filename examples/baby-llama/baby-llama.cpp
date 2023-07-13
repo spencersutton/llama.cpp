@@ -5,10 +5,6 @@
 
 #include "ggml.h"
 
-#if defined(_MSC_VER)
-#pragma warning(disable : 4244 4267)  // possible loss of data
-#endif
-
 float frand() { return (float)rand() / (float)RAND_MAX; }
 
 struct random_normal_distribution {

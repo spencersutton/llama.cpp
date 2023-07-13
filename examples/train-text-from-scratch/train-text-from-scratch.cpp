@@ -13,10 +13,6 @@
 #include "ggml.h"
 #include "llama.h"
 
-#if defined(_MSC_VER)
-#pragma warning(disable : 4244 4267)  // possible loss of data
-#endif
-
 struct random_normal_distribution {
   std::mt19937 gen;
   std::normal_distribution<float> rd;
@@ -2104,15 +2100,7 @@ struct ggml_tensor *cross_entropy_loss(struct ggml_context *ctx, struct ggml_ten
   return ggml_cross_entropy_loss(ctx, a, probs);
 }
 
-#ifdef __GNUC__
-#ifdef __MINGW32__
-__attribute__((format(gnu_printf, 1, 2)))
-#else
-__attribute__((format(printf, 1, 2)))
-#endif
-#endif
-static std::string
-format(const char *fmt, ...) {
+__attribute__((format(printf, 1, 2))) static std::string format(const char *fmt, ...) {
   va_list ap, ap2;
   va_start(ap, fmt);
   va_copy(ap2, ap);
@@ -2143,21 +2131,13 @@ struct llama_file {
   }
 
   size_t tell() const {
-#ifdef _WIN32
-    __int64 ret = _ftelli64(fp);
-#else
     long ret = std::ftell(fp);
-#endif
     assert(ret != -1);  // this really shouldn't fail
     return (size_t)ret;
   }
 
   void seek(size_t offset, int whence) {
-#ifdef _WIN32
-    int ret = _fseeki64(fp, (__int64)offset, whence);
-#else
     int ret = std::fseek(fp, (long)offset, whence);
-#endif
     assert(ret == 0);  // same
   }
 

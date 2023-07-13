@@ -217,12 +217,8 @@
 extern "C" {
 #endif
 
-#ifdef __ARM_NEON
 // we use the built-in 16-bit float type
 typedef __fp16 ggml_fp16_t;
-#else
-typedef uint16_t ggml_fp16_t;
-#endif
 
 // convert FP16 <-> FP32
 float ggml_fp16_to_fp32(ggml_fp16_t x);

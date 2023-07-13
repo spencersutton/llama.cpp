@@ -12,9 +12,6 @@
 #ifdef GGML_USE_METAL
 #include "ggml-metal.h"
 #endif
-#ifdef GGML_USE_MPI
-#include "ggml-mpi.h"
-#endif
 #ifndef QK_K
 #ifdef GGML_QKK_64
 #define QK_K 64
@@ -299,10 +296,6 @@ struct llama_context {
 
 #ifdef GGML_USE_METAL
   ggml_metal_context *ctx_metal = NULL;
-#endif
-
-#ifdef GGML_USE_MPI
-  ggml_mpi_context *ctx_mpi = NULL;
 #endif
 
   int buf_last = 0;
@@ -805,17 +798,9 @@ void llama_backend_init(bool numa) {
   if (numa) {
     ggml_numa_init();
   }
-
-#ifdef GGML_USE_MPI
-  ggml_mpi_backend_init();
-#endif
 }
 
-void llama_backend_free() {
-#ifdef GGML_USE_MPI
-  ggml_mpi_backend_free();
-#endif
-}
+void llama_backend_free() {}
 
 int64_t llama_time_us() { return ggml_time_us(); }
 
@@ -1130,10 +1115,6 @@ static bool llama_model_load(const std::string &fname, llama_model &model, llama
 //
 static bool llama_eval_internal(llama_context &lctx, const llama_token *tokens, const float *embd, int n_tokens,
                                 int n_past, int n_threads, const char *cgraph_fname) {
-#ifdef GGML_USE_MPI
-  ggml_mpi_eval_init(lctx.ctx_mpi, &n_tokens, &n_past, &n_threads);
-#endif
-
   const int64_t t_start_us = ggml_time_us();
 
   const int N = n_tokens;
@@ -1410,10 +1391,6 @@ static bool llama_eval_internal(llama_context &lctx, const llama_token *tokens, 
   // run the computation
   ggml_build_forward_expand(&gf, cur);
 
-#if GGML_USE_MPI
-  ggml_mpi_graph_compute_pre(lctx.ctx_mpi, &gf, n_layer);
-#endif
-
 #ifdef GGML_USE_METAL
   if (lctx.ctx_metal && N == 1) {
     ggml_metal_set_n_cb(lctx.ctx_metal, n_threads);
@@ -1440,10 +1417,6 @@ static bool llama_eval_internal(llama_context &lctx, const llama_token *tokens, 
   }
 #else
   ggml_graph_compute_helper(lctx.work_buffer, &gf, n_threads);
-#endif
-
-#if GGML_USE_MPI
-  ggml_mpi_graph_compute_post(lctx.ctx_mpi, &gf, n_layer);
 #endif
 
   // update kv token count
@@ -2571,19 +2544,6 @@ struct llama_context *llama_new_context_with_model(struct llama_model *model, st
     LLAMA_METAL_CHECK_BUF(
         ggml_metal_add_buffer(ctx->ctx_metal, "scr1", ctx->buf_scratch[1].addr, ctx->buf_scratch[1].size, 0));
 #undef LLAMA_METAL_CHECK_BUF
-  }
-#endif
-
-#ifdef GGML_USE_MPI
-  ctx->ctx_mpi = ggml_mpi_init();
-
-  if (ggml_mpi_rank(ctx->ctx_mpi) > 0) {
-    // Enter a blocking eval loop with dummy input, letting rank=0 drive the process
-    const std::vector<llama_token> tmp(ctx->model.hparams.n_ctx, llama_token_bos());
-    while (!llama_eval(ctx, tmp.data(), tmp.size(), 0, 0)) {
-    };
-    llama_backend_free();
-    exit(1);
   }
 #endif
 

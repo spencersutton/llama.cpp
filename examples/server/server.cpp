@@ -1,14 +1,8 @@
 #include "build-info.h"
 #include "common.h"
-#include "llama.h"
-
-#ifndef NDEBUG
-// crash the server in debug mode, otherwise send an http 500 error
-#define CPPHTTPLIB_NO_EXCEPTIONS 1
-#endif
-
 #include "httplib.h"
 #include "json.hpp"
+#include "llama.h"
 
 // auto generated files (update with ./deps.sh)
 #include "completion.js.hpp"
@@ -649,41 +643,15 @@ static void server_params_parse(int argc, char **argv, server_params &sparams, g
         invalid_param = true;
         break;
       }
-#ifdef GGML_USE_CUBLAS
-      std::string arg_next = argv[i];
-
-      // split string by , and /
-      const std::regex regex{R"([,/]+)"};
-      std::sregex_token_iterator it{arg_next.begin(), arg_next.end(), regex, -1};
-      std::vector<std::string> split_arg{it, {}};
-      assert(split_arg.size() <= LLAMA_MAX_DEVICES);
-
-      for (size_t i_device = 0; i_device < LLAMA_MAX_DEVICES; ++i_device) {
-        if (i_device < split_arg.size()) {
-          params.tensor_split[i_device] = std::stof(split_arg[i_device]);
-        } else {
-          params.tensor_split[i_device] = 0.0f;
-        }
-      }
-#else
       LOG_WARNING("llama.cpp was compiled without cuBLAS. It is not possible to set a tensor split.", {});
-#endif  // GGML_USE_CUBLAS
     } else if (arg == "--low-vram" || arg == "-lv") {
-#ifdef GGML_USE_CUBLAS
-      params.low_vram = true;
-#else
       fprintf(stderr, "warning: llama.cpp was compiled without cuBLAS. It is not possible to set lower vram usage.\n");
-#endif  // GGML_USE_CUBLAS
     } else if (arg == "--main-gpu" || arg == "-mg") {
       if (++i >= argc) {
         invalid_param = true;
         break;
       }
-#ifdef GGML_USE_CUBLAS
-      params.main_gpu = std::stoi(argv[i]);
-#else
       LOG_WARNING("llama.cpp was compiled without cuBLAS. It is not possible to set a main GPU.", {});
-#endif
     } else if (arg == "--lora") {
       if (++i >= argc) {
         invalid_param = true;

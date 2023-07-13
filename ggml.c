@@ -100,15 +100,6 @@ inline static void *ggml_aligned_malloc(size_t size) {
 // floating point type used to accumulate sums
 typedef double ggml_float;
 
-// 16-bit float
-// on Arm, we use __fp16
-// on x86, we use uint16_t
-#ifdef __ARM_NEON
-
-// if YCM cannot find <arm_neon.h>, make a symbolic link to it, for example:
-//
-//   $ ln -sfn /Library/Developer/CommandLineTools/usr/lib/clang/13.1.6/include/arm_neon.h ./src/
-//
 #include <arm_neon.h>
 
 #define GGML_COMPUTE_FP16_TO_FP32(x) ((float)(x))
@@ -116,85 +107,6 @@ typedef double ggml_float;
 
 #define GGML_FP16_TO_FP32(x) ((float)(x))
 #define GGML_FP32_TO_FP16(x) (x)
-
-#else
-
-#include <immintrin.h>
-
-// FP16 <-> FP32
-// ref: https://github.com/Maratyszcza/FP16
-
-static inline float fp32_from_bits(uint32_t w) {
-  union {
-    uint32_t as_bits;
-    float as_value;
-  } fp32;
-  fp32.as_bits = w;
-  return fp32.as_value;
-}
-
-static inline uint32_t fp32_to_bits(float f) {
-  union {
-    float as_value;
-    uint32_t as_bits;
-  } fp32;
-  fp32.as_value = f;
-  return fp32.as_bits;
-}
-
-static inline float ggml_compute_fp16_to_fp32(ggml_fp16_t h) {
-  const uint32_t w = (uint32_t)h << 16;
-  const uint32_t sign = w & UINT32_C(0x80000000);
-  const uint32_t two_w = w + w;
-
-  const uint32_t exp_offset = UINT32_C(0xE0) << 23;
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) || defined(__GNUC__) && !defined(__STRICT_ANSI__)
-  const float exp_scale = 0x1.0p-112f;
-#else
-  const float exp_scale = fp32_from_bits(UINT32_C(0x7800000));
-#endif
-  const float normalized_value = fp32_from_bits((two_w >> 4) + exp_offset) * exp_scale;
-
-  const uint32_t magic_mask = UINT32_C(126) << 23;
-  const float magic_bias = 0.5f;
-  const float denormalized_value = fp32_from_bits((two_w >> 17) | magic_mask) - magic_bias;
-
-  const uint32_t denormalized_cutoff = UINT32_C(1) << 27;
-  const uint32_t result =
-      sign | (two_w < denormalized_cutoff ? fp32_to_bits(denormalized_value) : fp32_to_bits(normalized_value));
-  return fp32_from_bits(result);
-}
-
-static inline ggml_fp16_t ggml_compute_fp32_to_fp16(float f) {
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) || defined(__GNUC__) && !defined(__STRICT_ANSI__)
-  const float scale_to_inf = 0x1.0p+112f;
-  const float scale_to_zero = 0x1.0p-110f;
-#else
-  const float scale_to_inf = fp32_from_bits(UINT32_C(0x77800000));
-  const float scale_to_zero = fp32_from_bits(UINT32_C(0x08800000));
-#endif
-  float base = (fabsf(f) * scale_to_inf) * scale_to_zero;
-
-  const uint32_t w = fp32_to_bits(f);
-  const uint32_t shl1_w = w + w;
-  const uint32_t sign = w & UINT32_C(0x80000000);
-  uint32_t bias = shl1_w & UINT32_C(0xFF000000);
-  if (bias < UINT32_C(0x71000000)) {
-    bias = UINT32_C(0x71000000);
-  }
-
-  base = fp32_from_bits((bias >> 1) + UINT32_C(0x07800000)) + base;
-  const uint32_t bits = fp32_to_bits(base);
-  const uint32_t exp_bits = (bits >> 13) & UINT32_C(0x00007C00);
-  const uint32_t mantissa_bits = bits & UINT32_C(0x00000FFF);
-  const uint32_t nonsign = exp_bits + mantissa_bits;
-  return (sign >> 16) | (shl1_w > UINT32_C(0xFF000000) ? UINT16_C(0x7E00) : nonsign);
-}
-
-#define GGML_COMPUTE_FP16_TO_FP32(x) ggml_compute_fp16_to_fp32(x)
-#define GGML_COMPUTE_FP32_TO_FP16(x) ggml_compute_fp32_to_fp16(x)
-
-#endif  // __ARM_NEON
 
 //
 // global data
@@ -215,7 +127,6 @@ static ggml_fp16_t table_exp_f16[1 << 16];
 // precomputed f32 table for f16 (256 KB)
 static float table_f32_f16[1 << 16];
 
-#if defined(__ARM_NEON) || defined(__wasm_simd128__)
 #define B1(c, s, n) 0x##n##c, 0x##n##s
 #define B2(c, s, n) B1(c, s, n##c), B1(c, s, n##s)
 #define B3(c, s, n) B2(c, s, n##c), B2(c, s, n##s)
@@ -228,7 +139,6 @@ static float table_f32_f16[1 << 16];
 // precomputed tables for expanding 8bits to 8 bytes:
 static const uint64_t table_b2b_0[1 << 8] = {B8(00, 10)};  // ( b) << 4
 static const uint64_t table_b2b_1[1 << 8] = {B8(10, 00)};  // (!b) << 4
-#endif
 
 // On ARM NEON, it's quicker to directly convert x -> x instead of calling into ggml_lookup_fp16_to_fp32,
 // so we define GGML_FP16_TO_FP32 and GGML_FP32_TO_FP16 elsewhere for NEON.
@@ -308,10 +218,6 @@ static const size_t CACHE_LINE_SIZE_F32 = CACHE_LINE_SIZE / sizeof(float);
 //
 
 #define MM256_SET_M128I(a, b) _mm256_insertf128_si256(_mm256_castsi128_si256(b), (a), 1)
-
-#if defined(__ARM_NEON)
-
-#endif
 
 #define QK4_0 32
 typedef struct {
@@ -571,7 +477,6 @@ static void quantize_row_q8_0(const float *restrict x, void *restrict vy, int k)
 
   block_q8_0 *restrict y = vy;
 
-#if defined(__ARM_NEON)
   for (int i = 0; i < nb; i++) {
     float32x4_t srcv[8];
     float32x4_t asrcv[8];
@@ -611,10 +516,6 @@ static void quantize_row_q8_0(const float *restrict x, void *restrict vy, int k)
       y[i].qs[4 * j + 3] = vgetq_lane_s32(vi, 3);
     }
   }
-#else
-  // scalar
-  quantize_row_q8_0_reference(x, y, k);
-#endif
 }
 
 // reference implementation for deterministic creation of model files
@@ -656,7 +557,6 @@ static void quantize_row_q8_1(const float *restrict x, void *restrict vy, int k)
 
   block_q8_1 *restrict y = vy;
 
-#if defined(__ARM_NEON)
   for (int i = 0; i < nb; i++) {
     float32x4_t srcv[8];
     float32x4_t asrcv[8];
@@ -702,10 +602,6 @@ static void quantize_row_q8_1(const float *restrict x, void *restrict vy, int k)
 
     y[i].s = d * vaddvq_s32(accv);
   }
-#else
-  // scalar
-  quantize_row_q8_1_reference(x, y, k);
-#endif
 }
 
 static void dequantize_row_q4_0(const block_q4_0 *restrict x, float *restrict y, int k) {
@@ -940,8 +836,6 @@ ggml_type_traits_t ggml_internal_get_type_traits(enum ggml_type i) { return type
 //   number of elements to fit in a single register
 //
 
-#if defined(__ARM_NEON) && defined(__ARM_FEATURE_FMA)
-
 #define GGML_SIMD
 
 // F32 NEON
@@ -987,7 +881,6 @@ ggml_type_traits_t ggml_internal_get_type_traits(enum ggml_type i) { return type
 
 // F16 NEON
 
-#if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
 #define GGML_F16_STEP 32
 #define GGML_F16_EPR 8
 
@@ -1027,42 +920,11 @@ ggml_type_traits_t ggml_internal_get_type_traits(enum ggml_type i) { return type
 #define GGML_F16_VEC_ADD GGML_F16x8_ADD
 #define GGML_F16_VEC_MUL GGML_F16x8_MUL
 #define GGML_F16_VEC_REDUCE GGML_F16x8_REDUCE
-#else
-// if FP16 vector arithmetic is not supported, we use FP32 instead
-// and take advantage of the vcvt_ functions to convert to/from FP16
-
-#define GGML_F16_STEP 16
-#define GGML_F16_EPR 4
-
-#define GGML_F32Cx4 float32x4_t
-#define GGML_F32Cx4_ZERO vdupq_n_f32(0.0f)
-#define GGML_F32Cx4_SET1(x) vdupq_n_f32(x)
-#define GGML_F32Cx4_LOAD(x) vcvt_f32_f16(vld1_f16(x))
-#define GGML_F32Cx4_STORE(x, y) vst1_f16(x, vcvt_f16_f32(y))
-#define GGML_F32Cx4_FMA(a, b, c) vfmaq_f32(a, b, c)
-#define GGML_F32Cx4_ADD vaddq_f32
-#define GGML_F32Cx4_MUL vmulq_f32
-#define GGML_F32Cx4_REDUCE GGML_F32x4_REDUCE
-
-#define GGML_F16_VEC GGML_F32Cx4
-#define GGML_F16_VEC_ZERO GGML_F32Cx4_ZERO
-#define GGML_F16_VEC_SET1 GGML_F32Cx4_SET1
-#define GGML_F16_VEC_LOAD(p, i) GGML_F32Cx4_LOAD(p)
-#define GGML_F16_VEC_STORE(p, r, i) GGML_F32Cx4_STORE(p, r[i])
-#define GGML_F16_VEC_FMA GGML_F32Cx4_FMA
-#define GGML_F16_VEC_ADD GGML_F32Cx4_ADD
-#define GGML_F16_VEC_MUL GGML_F32Cx4_MUL
-#define GGML_F16_VEC_REDUCE GGML_F32Cx4_REDUCE
-#endif
-
-#endif
 
 // GGML_F32_ARR / GGML_F16_ARR
 //   number of registers to use per step
-#ifdef GGML_SIMD
 #define GGML_F32_ARR (GGML_F32_STEP / GGML_F32_EPR)
 #define GGML_F16_ARR (GGML_F16_STEP / GGML_F16_EPR)
-#endif
 
 //
 // fundamental operations
@@ -1144,7 +1006,6 @@ inline static void ggml_vec_div_f32(const int n, float *z, const float *x, const
 }
 
 static void ggml_vec_dot_f32(const int n, float *restrict s, const float *restrict x, const float *restrict y) {
-#ifdef GGML_SIMD
   float sumf = 0.0f;
   const int np = (n & ~(GGML_F32_STEP - 1));
 
@@ -1169,13 +1030,6 @@ static void ggml_vec_dot_f32(const int n, float *restrict s, const float *restri
   for (int i = np; i < n; ++i) {
     sumf += x[i] * y[i];
   }
-#else
-  // scalar
-  ggml_float sumf = 0.0;
-  for (int i = 0; i < n; ++i) {
-    sumf += (ggml_float)(x[i] * y[i]);
-  }
-#endif
 
   *s = sumf;
 }
@@ -1183,7 +1037,6 @@ static void ggml_vec_dot_f32(const int n, float *restrict s, const float *restri
 static void ggml_vec_dot_f16(const int n, float *restrict s, ggml_fp16_t *restrict x, ggml_fp16_t *restrict y) {
   ggml_float sumf = 0.0;
 
-#if defined(GGML_SIMD)
   const int np = (n & ~(GGML_F16_STEP - 1));
 
   GGML_F16_VEC sum[GGML_F16_ARR] = {GGML_F16_VEC_ZERO};
@@ -1207,11 +1060,6 @@ static void ggml_vec_dot_f16(const int n, float *restrict s, ggml_fp16_t *restri
   for (int i = np; i < n; ++i) {
     sumf += (ggml_float)(GGML_FP16_TO_FP32(x[i]) * GGML_FP16_TO_FP32(y[i]));
   }
-#else
-  for (int i = 0; i < n; ++i) {
-    sumf += (ggml_float)(GGML_FP16_TO_FP32(x[i]) * GGML_FP16_TO_FP32(y[i]));
-  }
-#endif
 
   *s = sumf;
 }
@@ -1223,7 +1071,6 @@ static void ggml_vec_dot_q4_0_q8_0(const int n, float *restrict s, const void *r
   const block_q4_0 *restrict x = vx;
   const block_q8_0 *restrict y = vy;
 
-#if defined(__ARM_NEON)
   float32x4_t sumv0 = vdupq_n_f32(0.0f);
   float32x4_t sumv1 = vdupq_n_f32(0.0f);
 
@@ -1257,54 +1104,15 @@ static void ggml_vec_dot_q4_0_q8_0(const int n, float *restrict s, const void *r
     const int8x16_t v1_1l = vld1q_s8(y1->qs);
     const int8x16_t v1_1h = vld1q_s8(y1->qs + 16);
 
-#if defined(__ARM_FEATURE_DOTPROD)
     // dot product into int32x4_t
     const int32x4_t p_0 = vdotq_s32(vdotq_s32(vdupq_n_s32(0), v0_0ls, v1_0l), v0_0hs, v1_0h);
     const int32x4_t p_1 = vdotq_s32(vdotq_s32(vdupq_n_s32(0), v0_1ls, v1_1l), v0_1hs, v1_1h);
 
     sumv0 = vmlaq_n_f32(sumv0, vcvtq_f32_s32(p_0), GGML_FP16_TO_FP32(x0->d) * GGML_FP16_TO_FP32(y0->d));
     sumv1 = vmlaq_n_f32(sumv1, vcvtq_f32_s32(p_1), GGML_FP16_TO_FP32(x1->d) * GGML_FP16_TO_FP32(y1->d));
-#else
-    const int16x8_t pl0l = vmull_s8(vget_low_s8(v0_0ls), vget_low_s8(v1_0l));
-    const int16x8_t pl0h = vmull_s8(vget_high_s8(v0_0ls), vget_high_s8(v1_0l));
-    const int16x8_t ph0l = vmull_s8(vget_low_s8(v0_0hs), vget_low_s8(v1_0h));
-    const int16x8_t ph0h = vmull_s8(vget_high_s8(v0_0hs), vget_high_s8(v1_0h));
-
-    const int16x8_t pl1l = vmull_s8(vget_low_s8(v0_1ls), vget_low_s8(v1_1l));
-    const int16x8_t pl1h = vmull_s8(vget_high_s8(v0_1ls), vget_high_s8(v1_1l));
-    const int16x8_t ph1l = vmull_s8(vget_low_s8(v0_1hs), vget_low_s8(v1_1h));
-    const int16x8_t ph1h = vmull_s8(vget_high_s8(v0_1hs), vget_high_s8(v1_1h));
-
-    const int32x4_t pl0 = vaddq_s32(vpaddlq_s16(pl0l), vpaddlq_s16(pl0h));
-    const int32x4_t ph0 = vaddq_s32(vpaddlq_s16(ph0l), vpaddlq_s16(ph0h));
-    const int32x4_t pl1 = vaddq_s32(vpaddlq_s16(pl1l), vpaddlq_s16(pl1h));
-    const int32x4_t ph1 = vaddq_s32(vpaddlq_s16(ph1l), vpaddlq_s16(ph1h));
-
-    sumv0 = vmlaq_n_f32(sumv0, vcvtq_f32_s32(vaddq_s32(pl0, ph0)), GGML_FP16_TO_FP32(x0->d) * GGML_FP16_TO_FP32(y0->d));
-    sumv1 = vmlaq_n_f32(sumv1, vcvtq_f32_s32(vaddq_s32(pl1, ph1)), GGML_FP16_TO_FP32(x1->d) * GGML_FP16_TO_FP32(y1->d));
-#endif
   }
 
   *s = vaddvq_f32(sumv0) + vaddvq_f32(sumv1);
-#else
-  // scalar
-  float sumf = 0.0;
-
-  for (int i = 0; i < nb; i++) {
-    int sumi = 0;
-
-    for (int j = 0; j < qk / 2; ++j) {
-      const int v0 = (x[i].qs[j] & 0x0F) - 8;
-      const int v1 = (x[i].qs[j] >> 4) - 8;
-
-      sumi += (v0 * y[i].qs[j]) + (v1 * y[i].qs[j + qk / 2]);
-    }
-
-    sumf += sumi * GGML_FP16_TO_FP32(x[i].d) * GGML_FP16_TO_FP32(y[i].d);
-  }
-
-  *s = sumf;
-#endif
 }
 
 static void ggml_vec_dot_q4_1_q8_1(const int n, float *restrict s, const void *restrict vx, const void *restrict vy) {
@@ -1315,7 +1123,6 @@ static void ggml_vec_dot_q4_1_q8_1(const int n, float *restrict s, const void *r
   const block_q8_1 *restrict y = vy;
 
   // TODO: add WASM SIMD
-#if defined(__ARM_NEON)
   float32x4_t sumv0 = vdupq_n_f32(0.0f);
   float32x4_t sumv1 = vdupq_n_f32(0.0f);
 
@@ -1346,54 +1153,15 @@ static void ggml_vec_dot_q4_1_q8_1(const int n, float *restrict s, const void *r
     const int8x16_t v1_1l = vld1q_s8(y1->qs);
     const int8x16_t v1_1h = vld1q_s8(y1->qs + 16);
 
-#if defined(__ARM_FEATURE_DOTPROD)
     // dot product into int32x4_t
     const int32x4_t p_0 = vdotq_s32(vdotq_s32(vdupq_n_s32(0), v0_0l, v1_0l), v0_0h, v1_0h);
     const int32x4_t p_1 = vdotq_s32(vdotq_s32(vdupq_n_s32(0), v0_1l, v1_1l), v0_1h, v1_1h);
 
     sumv0 = vmlaq_n_f32(sumv0, vcvtq_f32_s32(p_0), GGML_FP16_TO_FP32(x0->d) * y0->d);
     sumv1 = vmlaq_n_f32(sumv1, vcvtq_f32_s32(p_1), GGML_FP16_TO_FP32(x1->d) * y1->d);
-#else
-    const int16x8_t pl0l = vmull_s8(vget_low_s8(v0_0l), vget_low_s8(v1_0l));
-    const int16x8_t pl0h = vmull_s8(vget_high_s8(v0_0l), vget_high_s8(v1_0l));
-    const int16x8_t ph0l = vmull_s8(vget_low_s8(v0_0h), vget_low_s8(v1_0h));
-    const int16x8_t ph0h = vmull_s8(vget_high_s8(v0_0h), vget_high_s8(v1_0h));
-
-    const int16x8_t pl1l = vmull_s8(vget_low_s8(v0_1l), vget_low_s8(v1_1l));
-    const int16x8_t pl1h = vmull_s8(vget_high_s8(v0_1l), vget_high_s8(v1_1l));
-    const int16x8_t ph1l = vmull_s8(vget_low_s8(v0_1h), vget_low_s8(v1_1h));
-    const int16x8_t ph1h = vmull_s8(vget_high_s8(v0_1h), vget_high_s8(v1_1h));
-
-    const int32x4_t pl0 = vaddq_s32(vpaddlq_s16(pl0l), vpaddlq_s16(pl0h));
-    const int32x4_t ph0 = vaddq_s32(vpaddlq_s16(ph0l), vpaddlq_s16(ph0h));
-    const int32x4_t pl1 = vaddq_s32(vpaddlq_s16(pl1l), vpaddlq_s16(pl1h));
-    const int32x4_t ph1 = vaddq_s32(vpaddlq_s16(ph1l), vpaddlq_s16(ph1h));
-
-    sumv0 = vmlaq_n_f32(sumv0, vcvtq_f32_s32(vaddq_s32(pl0, ph0)), GGML_FP16_TO_FP32(x0->d) * y0->d);
-    sumv1 = vmlaq_n_f32(sumv1, vcvtq_f32_s32(vaddq_s32(pl1, ph1)), GGML_FP16_TO_FP32(x1->d) * y1->d);
-#endif
   }
 
   *s = vaddvq_f32(sumv0) + vaddvq_f32(sumv1) + summs;
-#else
-  // scalar
-  float sumf = 0.0;
-
-  for (int i = 0; i < nb; i++) {
-    int sumi = 0;
-
-    for (int j = 0; j < qk / 2; ++j) {
-      const int v0 = (x[i].qs[j] & 0x0F);
-      const int v1 = (x[i].qs[j] >> 4);
-
-      sumi += (v0 * y[i].qs[j]) + (v1 * y[i].qs[j + qk / 2]);
-    }
-
-    sumf += (GGML_FP16_TO_FP32(x[i].d) * y[i].d) * sumi + GGML_FP16_TO_FP32(x[i].m) * y[i].s;
-  }
-
-  *s = sumf;
-#endif
 }
 
 static void ggml_vec_dot_q5_0_q8_0(const int n, float *restrict s, const void *restrict vx, const void *restrict vy) {
@@ -1403,7 +1171,6 @@ static void ggml_vec_dot_q5_0_q8_0(const int n, float *restrict s, const void *r
   const block_q5_0 *restrict x = vx;
   const block_q8_0 *restrict y = vy;
 
-#if defined(__ARM_NEON)
   float32x4_t sumv0 = vdupq_n_f32(0.0f);
   float32x4_t sumv1 = vdupq_n_f32(0.0f);
 
@@ -1461,7 +1228,6 @@ static void ggml_vec_dot_q5_0_q8_0(const int n, float *restrict s, const void *r
     const int8x16_t v1_1l = vld1q_s8(y1->qs);
     const int8x16_t v1_1h = vld1q_s8(y1->qs + 16);
 
-#if defined(__ARM_FEATURE_DOTPROD)
     sumv0 = vmlaq_n_f32(
         sumv0,
         vcvtq_f32_s32(vaddq_s32(vdotq_s32(vdupq_n_s32(0), v0_0lf, v1_0l), vdotq_s32(vdupq_n_s32(0), v0_0hf, v1_0h))),
@@ -1470,53 +1236,9 @@ static void ggml_vec_dot_q5_0_q8_0(const int n, float *restrict s, const void *r
         sumv1,
         vcvtq_f32_s32(vaddq_s32(vdotq_s32(vdupq_n_s32(0), v0_1lf, v1_1l), vdotq_s32(vdupq_n_s32(0), v0_1hf, v1_1h))),
         GGML_FP16_TO_FP32(x1->d) * GGML_FP16_TO_FP32(y1->d));
-#else
-    const int16x8_t pl0l = vmull_s8(vget_low_s8(v0_0lf), vget_low_s8(v1_0l));
-    const int16x8_t pl0h = vmull_s8(vget_high_s8(v0_0lf), vget_high_s8(v1_0l));
-    const int16x8_t ph0l = vmull_s8(vget_low_s8(v0_0hf), vget_low_s8(v1_0h));
-    const int16x8_t ph0h = vmull_s8(vget_high_s8(v0_0hf), vget_high_s8(v1_0h));
-
-    const int16x8_t pl1l = vmull_s8(vget_low_s8(v0_1lf), vget_low_s8(v1_1l));
-    const int16x8_t pl1h = vmull_s8(vget_high_s8(v0_1lf), vget_high_s8(v1_1l));
-    const int16x8_t ph1l = vmull_s8(vget_low_s8(v0_1hf), vget_low_s8(v1_1h));
-    const int16x8_t ph1h = vmull_s8(vget_high_s8(v0_1hf), vget_high_s8(v1_1h));
-
-    const int32x4_t pl0 = vaddq_s32(vpaddlq_s16(pl0l), vpaddlq_s16(pl0h));
-    const int32x4_t ph0 = vaddq_s32(vpaddlq_s16(ph0l), vpaddlq_s16(ph0h));
-    const int32x4_t pl1 = vaddq_s32(vpaddlq_s16(pl1l), vpaddlq_s16(pl1h));
-    const int32x4_t ph1 = vaddq_s32(vpaddlq_s16(ph1l), vpaddlq_s16(ph1h));
-
-    sumv0 = vmlaq_n_f32(sumv0, vcvtq_f32_s32(vaddq_s32(pl0, ph0)), GGML_FP16_TO_FP32(x0->d) * GGML_FP16_TO_FP32(y0->d));
-    sumv1 = vmlaq_n_f32(sumv1, vcvtq_f32_s32(vaddq_s32(pl1, ph1)), GGML_FP16_TO_FP32(x1->d) * GGML_FP16_TO_FP32(y1->d));
-#endif
   }
 
   *s = vaddvq_f32(sumv0) + vaddvq_f32(sumv1);
-#else
-  // scalar
-  float sumf = 0.0;
-
-  for (int i = 0; i < nb; i++) {
-    uint32_t qh;
-    memcpy(&qh, x[i].qh, sizeof(qh));
-
-    int sumi = 0;
-
-    for (int j = 0; j < qk / 2; ++j) {
-      const uint8_t xh_0 = ((qh & (1u << (j + 0))) >> (j + 0)) << 4;
-      const uint8_t xh_1 = ((qh & (1u << (j + 16))) >> (j + 12));
-
-      const int32_t x0 = ((x[i].qs[j] & 0x0F) | xh_0) - 16;
-      const int32_t x1 = ((x[i].qs[j] >> 4) | xh_1) - 16;
-
-      sumi += (x0 * y[i].qs[j]) + (x1 * y[i].qs[j + qk / 2]);
-    }
-
-    sumf += (GGML_FP16_TO_FP32(x[i].d) * GGML_FP16_TO_FP32(y[i].d)) * sumi;
-  }
-
-  *s = sumf;
-#endif
 }
 
 static void ggml_vec_dot_q5_1_q8_1(const int n, float *restrict s, const void *restrict vx, const void *restrict vy) {
@@ -1526,7 +1248,6 @@ static void ggml_vec_dot_q5_1_q8_1(const int n, float *restrict s, const void *r
   const block_q5_1 *restrict x = vx;
   const block_q8_1 *restrict y = vy;
 
-#if defined(__ARM_NEON)
   float32x4_t sumv0 = vdupq_n_f32(0.0f);
   float32x4_t sumv1 = vdupq_n_f32(0.0f);
 
@@ -1590,7 +1311,6 @@ static void ggml_vec_dot_q5_1_q8_1(const int n, float *restrict s, const void *r
     const int8x16_t v1_1l = vld1q_s8(y1->qs);
     const int8x16_t v1_1h = vld1q_s8(y1->qs + 16);
 
-#if defined(__ARM_FEATURE_DOTPROD)
     sumv0 = vmlaq_n_f32(
         sumv0,
         vcvtq_f32_s32(vaddq_s32(vdotq_s32(vdupq_n_s32(0), v0_0lf, v1_0l), vdotq_s32(vdupq_n_s32(0), v0_0hf, v1_0h))),
@@ -1599,53 +1319,9 @@ static void ggml_vec_dot_q5_1_q8_1(const int n, float *restrict s, const void *r
         sumv1,
         vcvtq_f32_s32(vaddq_s32(vdotq_s32(vdupq_n_s32(0), v0_1lf, v1_1l), vdotq_s32(vdupq_n_s32(0), v0_1hf, v1_1h))),
         GGML_FP16_TO_FP32(x1->d) * y1->d);
-#else
-    const int16x8_t pl0l = vmull_s8(vget_low_s8(v0_0lf), vget_low_s8(v1_0l));
-    const int16x8_t pl0h = vmull_s8(vget_high_s8(v0_0lf), vget_high_s8(v1_0l));
-    const int16x8_t ph0l = vmull_s8(vget_low_s8(v0_0hf), vget_low_s8(v1_0h));
-    const int16x8_t ph0h = vmull_s8(vget_high_s8(v0_0hf), vget_high_s8(v1_0h));
-
-    const int16x8_t pl1l = vmull_s8(vget_low_s8(v0_1lf), vget_low_s8(v1_1l));
-    const int16x8_t pl1h = vmull_s8(vget_high_s8(v0_1lf), vget_high_s8(v1_1l));
-    const int16x8_t ph1l = vmull_s8(vget_low_s8(v0_1hf), vget_low_s8(v1_1h));
-    const int16x8_t ph1h = vmull_s8(vget_high_s8(v0_1hf), vget_high_s8(v1_1h));
-
-    const int32x4_t pl0 = vaddq_s32(vpaddlq_s16(pl0l), vpaddlq_s16(pl0h));
-    const int32x4_t ph0 = vaddq_s32(vpaddlq_s16(ph0l), vpaddlq_s16(ph0h));
-    const int32x4_t pl1 = vaddq_s32(vpaddlq_s16(pl1l), vpaddlq_s16(pl1h));
-    const int32x4_t ph1 = vaddq_s32(vpaddlq_s16(ph1l), vpaddlq_s16(ph1h));
-
-    sumv0 = vmlaq_n_f32(sumv0, vcvtq_f32_s32(vaddq_s32(pl0, ph0)), GGML_FP16_TO_FP32(x0->d) * y0->d);
-    sumv1 = vmlaq_n_f32(sumv1, vcvtq_f32_s32(vaddq_s32(pl1, ph1)), GGML_FP16_TO_FP32(x1->d) * y1->d);
-#endif
   }
 
   *s = vaddvq_f32(sumv0) + vaddvq_f32(sumv1) + summs0 + summs1;
-#else
-  // scalar
-  float sumf = 0.0;
-
-  for (int i = 0; i < nb; i++) {
-    uint32_t qh;
-    memcpy(&qh, x[i].qh, sizeof(qh));
-
-    int sumi = 0;
-
-    for (int j = 0; j < qk / 2; ++j) {
-      const uint8_t xh_0 = ((qh >> (j + 0)) << 4) & 0x10;
-      const uint8_t xh_1 = ((qh >> (j + 12))) & 0x10;
-
-      const int32_t x0 = (x[i].qs[j] & 0xF) | xh_0;
-      const int32_t x1 = (x[i].qs[j] >> 4) | xh_1;
-
-      sumi += (x0 * y[i].qs[j]) + (x1 * y[i].qs[j + qk / 2]);
-    }
-
-    sumf += (GGML_FP16_TO_FP32(x[i].d) * y[i].d) * sumi + GGML_FP16_TO_FP32(x[i].m) * y[i].s;
-  }
-
-  *s = sumf;
-#endif
 }
 
 static void ggml_vec_dot_q8_0_q8_0(const int n, float *restrict s, const void *restrict vx, const void *restrict vy) {
@@ -1655,7 +1331,6 @@ static void ggml_vec_dot_q8_0_q8_0(const int n, float *restrict s, const void *r
   const block_q8_0 *restrict x = vx;
   const block_q8_0 *restrict y = vy;
 
-#if defined(__ARM_NEON)
   float32x4_t sumv0 = vdupq_n_f32(0.0f);
   float32x4_t sumv1 = vdupq_n_f32(0.0f);
 
@@ -1676,7 +1351,6 @@ static void ggml_vec_dot_q8_0_q8_0(const int n, float *restrict s, const void *r
     const int8x16_t y1_0 = vld1q_s8(y1->qs);
     const int8x16_t y1_1 = vld1q_s8(y1->qs + 16);
 
-#if defined(__ARM_FEATURE_DOTPROD)
     sumv0 = vmlaq_n_f32(
         sumv0, vcvtq_f32_s32(vaddq_s32(vdotq_s32(vdupq_n_s32(0), x0_0, y0_0), vdotq_s32(vdupq_n_s32(0), x0_1, y0_1))),
         GGML_FP16_TO_FP32(x0->d) * GGML_FP16_TO_FP32(y0->d));
@@ -1684,45 +1358,9 @@ static void ggml_vec_dot_q8_0_q8_0(const int n, float *restrict s, const void *r
     sumv1 = vmlaq_n_f32(
         sumv1, vcvtq_f32_s32(vaddq_s32(vdotq_s32(vdupq_n_s32(0), x1_0, y1_0), vdotq_s32(vdupq_n_s32(0), x1_1, y1_1))),
         GGML_FP16_TO_FP32(x1->d) * GGML_FP16_TO_FP32(y1->d));
-
-#else
-    const int16x8_t p0_0 = vmull_s8(vget_low_s8(x0_0), vget_low_s8(y0_0));
-    const int16x8_t p0_1 = vmull_s8(vget_high_s8(x0_0), vget_high_s8(y0_0));
-    const int16x8_t p0_2 = vmull_s8(vget_low_s8(x0_1), vget_low_s8(y0_1));
-    const int16x8_t p0_3 = vmull_s8(vget_high_s8(x0_1), vget_high_s8(y0_1));
-
-    const int16x8_t p1_0 = vmull_s8(vget_low_s8(x1_0), vget_low_s8(y1_0));
-    const int16x8_t p1_1 = vmull_s8(vget_high_s8(x1_0), vget_high_s8(y1_0));
-    const int16x8_t p1_2 = vmull_s8(vget_low_s8(x1_1), vget_low_s8(y1_1));
-    const int16x8_t p1_3 = vmull_s8(vget_high_s8(x1_1), vget_high_s8(y1_1));
-
-    const int32x4_t p0 = vaddq_s32(vpaddlq_s16(p0_0), vpaddlq_s16(p0_1));
-    const int32x4_t p1 = vaddq_s32(vpaddlq_s16(p0_2), vpaddlq_s16(p0_3));
-    const int32x4_t p2 = vaddq_s32(vpaddlq_s16(p1_0), vpaddlq_s16(p1_1));
-    const int32x4_t p3 = vaddq_s32(vpaddlq_s16(p1_2), vpaddlq_s16(p1_3));
-
-    sumv0 = vmlaq_n_f32(sumv0, vcvtq_f32_s32(vaddq_s32(p0, p1)), GGML_FP16_TO_FP32(x0->d) * GGML_FP16_TO_FP32(y0->d));
-    sumv1 = vmlaq_n_f32(sumv1, vcvtq_f32_s32(vaddq_s32(p2, p3)), GGML_FP16_TO_FP32(x1->d) * GGML_FP16_TO_FP32(y1->d));
-#endif
   }
 
   *s = vaddvq_f32(sumv0) + vaddvq_f32(sumv1);
-#else
-  // scalar
-  float sumf = 0.0;
-
-  for (int i = 0; i < nb; i++) {
-    int sumi = 0;
-
-    for (int j = 0; j < qk; j++) {
-      sumi += x[i].qs[j] * y[i].qs[j];
-    }
-
-    sumf += sumi * (GGML_FP16_TO_FP32(x[i].d) * GGML_FP16_TO_FP32(y[i].d));
-  }
-
-  *s = sumf;
-#endif
 }
 
 // compute GGML_VEC_DOT_UNROLL dot products at once
@@ -1737,7 +1375,6 @@ inline static void ggml_vec_dot_f16_unroll(const int n, const int xs, float *res
     x[i] = (ggml_fp16_t *)((char *)xv + i * xs);
   }
 
-#if defined(GGML_SIMD)
   const int np = (n & ~(GGML_F16_STEP - 1));
 
   GGML_F16_VEC sum[GGML_VEC_DOT_UNROLL][GGML_F16_ARR] = {{GGML_F16_VEC_ZERO}};
@@ -1768,13 +1405,6 @@ inline static void ggml_vec_dot_f16_unroll(const int n, const int xs, float *res
       sumf[j] += (ggml_float)(GGML_FP16_TO_FP32(x[j][i]) * GGML_FP16_TO_FP32(y[i]));
     }
   }
-#else
-  for (int i = 0; i < n; ++i) {
-    for (int j = 0; j < GGML_VEC_DOT_UNROLL; ++j) {
-      sumf[j] += (ggml_float)(GGML_FP16_TO_FP32(x[j][i]) * GGML_FP16_TO_FP32(y[i]));
-    }
-  }
-#endif
 
   for (int i = 0; i < GGML_VEC_DOT_UNROLL; ++i) {
     s[i] = sumf[i];
@@ -1782,7 +1412,6 @@ inline static void ggml_vec_dot_f16_unroll(const int n, const int xs, float *res
 }
 
 inline static void ggml_vec_mad_f32(const int n, float *restrict y, const float *restrict x, const float v) {
-#if defined(GGML_SIMD)
   const int np = (n & ~(GGML_F32_STEP - 1));
 
   GGML_F32_VEC vx = GGML_F32_VEC_SET1(v);
@@ -1804,18 +1433,11 @@ inline static void ggml_vec_mad_f32(const int n, float *restrict y, const float 
   for (int i = np; i < n; ++i) {
     y[i] += x[i] * v;
   }
-#else
-  // scalar
-  for (int i = 0; i < n; ++i) {
-    y[i] += x[i] * v;
-  }
-#endif
 }
 
 // inline static void ggml_vec_scale_f32(const int n, float * y, const float   v) { for (int i = 0; i < n; ++i) y[i] *=
 // v;          }
 inline static void ggml_vec_scale_f32(const int n, float *y, const float v) {
-#if defined(GGML_SIMD)
   const int np = (n & ~(GGML_F32_STEP - 1));
 
   GGML_F32_VEC vx = GGML_F32_VEC_SET1(v);
@@ -1835,12 +1457,6 @@ inline static void ggml_vec_scale_f32(const int n, float *y, const float v) {
   for (int i = np; i < n; ++i) {
     y[i] *= v;
   }
-#else
-  // scalar
-  for (int i = 0; i < n; ++i) {
-    y[i] *= v;
-  }
-#endif
 }
 
 inline static void ggml_vec_norm_f32(const int n, float *s, const float *x) {
@@ -13659,31 +13275,13 @@ int ggml_cpu_has_avx512_vnni(void) { return 0; }
 
 int ggml_cpu_has_fma(void) { return 0; }
 
-int ggml_cpu_has_neon(void) {
-#if defined(__ARM_NEON)
-  return 1;
-#else
-  return 0;
-#endif
-}
+int ggml_cpu_has_neon(void) { return 1; }
 
-int ggml_cpu_has_arm_fma(void) {
-#if defined(__ARM_FEATURE_FMA)
-  return 1;
-#else
-  return 0;
-#endif
-}
+int ggml_cpu_has_arm_fma(void) { return 1; }
 
 int ggml_cpu_has_f16c(void) { return 0; }
 
-int ggml_cpu_has_fp16_va(void) {
-#if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
-  return 1;
-#else
-  return 0;
-#endif
-}
+int ggml_cpu_has_fp16_va(void) { return 1; }
 
 int ggml_cpu_has_wasm_simd(void) { return 0; }
 
