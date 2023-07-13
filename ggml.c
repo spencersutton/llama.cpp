@@ -143,12 +143,6 @@ inline static void * ggml_aligned_malloc(size_t size) {
 #define GGML_ALIGNED_FREE(ptr) free(ptr)
 
 #define UNUSED GGML_UNUSED
-#define SWAP(x, y, T) \
-    do {              \
-        T SWAP = x;   \
-        x = y;        \
-        y = SWAP;     \
-    } while (0)
 
 //
 // tensor access macros
