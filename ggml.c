@@ -11006,9 +11006,6 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
       }
     } break;
     case GGML_OP_SGN: {
-      if (src0->grad) {
-        // noop
-      }
     } break;
     case GGML_OP_NEG: {
       if (src0->grad) {
@@ -11016,9 +11013,6 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
       }
     } break;
     case GGML_OP_STEP: {
-      if (src0->grad) {
-        // noop
-      }
     } break;
     case GGML_OP_TANH:
     case GGML_OP_ELU: {
@@ -11197,9 +11191,6 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
       if (src0->grad) {
         src0->grad = ggml_add_impl(ctx, src0->grad, ggml_get_rows_back(ctx, tensor->grad, src1, src0->grad), inplace);
       }
-      if (src1->grad) {
-        // noop
-      }
     } break;
     case GGML_OP_GET_ROWS_BACK:
     case GGML_OP_DIAG: {
@@ -11212,9 +11203,6 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
         src0->grad =
             ggml_add_impl(ctx, src0->grad, ggml_diag_mask_zero_impl(ctx, tensor->grad, n_past, false), inplace);
       }
-      if (src1->grad) {
-        // noop
-      }
     } break;
     case GGML_OP_DIAG_MASK_ZERO: {
       // necessary for llama
@@ -11222,9 +11210,6 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
         const int n_past = ((int32_t *)src1->data)[0];
         src0->grad =
             ggml_add_impl(ctx, src0->grad, ggml_diag_mask_zero_impl(ctx, tensor->grad, n_past, false), inplace);
-      }
-      if (src1->grad) {
-        // noop
       }
     } break;
     case GGML_OP_SOFT_MAX: {
@@ -11245,9 +11230,6 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
         const int mode = ((int32_t *)src1->data)[2];
         src0->grad = ggml_add_impl(ctx, src0->grad, ggml_rope_back(ctx, tensor->grad, n_past, n_dims, mode), inplace);
       }
-      if (src1->grad) {
-        // noop
-      }
     } break;
     case GGML_OP_ROPE_BACK: {
       if (src0->grad) {
@@ -11256,9 +11238,6 @@ static void ggml_compute_backward(struct ggml_context *ctx, struct ggml_tensor *
         const int mode = ((int32_t *)src1->data)[2];
         const int n_ctx = ((int32_t *)src1->data)[3];
         src0->grad = ggml_add_impl(ctx, src0->grad, ggml_rope(ctx, tensor->grad, n_past, n_dims, mode, n_ctx), inplace);
-      }
-      if (src1->grad) {
-        // noop
       }
     } break;
     case GGML_OP_ALIBI:
